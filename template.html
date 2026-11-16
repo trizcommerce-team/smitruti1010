@@ -477,7 +477,7 @@ details.fold,.op-card,.op-post,.op-hl li{border-radius:18px}
   </section>
 
   <section class="view" id="v-op" aria-label="댓글 여론" hidden>
-    <div class="topbar"><div><div class="eyebrow">최근 3개월 팔로워 댓글</div><div class="h-title">댓글 여론</div></div><button class="icon-btn help-btn" type="button" aria-label="사용 설명서"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 17.2h.01"/></svg></button></div>
+    <div class="topbar"><div><div class="eyebrow">최근 팔로워 댓글</div><div class="h-title">댓글 여론</div></div><button class="icon-btn help-btn" type="button" aria-label="사용 설명서"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 17.2h.01"/></svg></button></div>
     <div class="scroll" id="op-scroll"></div>
   </section>
 
@@ -1277,7 +1277,7 @@ function openHelp() { // 캘린더마다 있는 기능만 골라서 설명
       IS_ADMIN ? `아무것도 안 누르고 넘겨도 괜찮아요. ‘무난했다’로 보고 나중에 다시 추천해 드려요.` : ""
     ].filter(Boolean)) : ""}
     ${OPINION ? sec("💬 댓글 여론", [
-      `화면 아래 <b>댓글 여론</b> 메뉴에서 최근 3개월 게시물에 달린 팔로워 댓글을 한눈에 정리해 볼 수 있어요.`,
+      `화면 아래 <b>댓글 여론</b> 메뉴에서 최근 게시물에 달린 팔로워 댓글을 한눈에 정리해 볼 수 있어요.`,
       `<b>한눈에 보기 · 주의 신호 · 좋아하는 점 · 자주 묻는 질문 · 요청</b> 순서로 보여드려요.`,
       `<b>매월 초</b>에 새로 정리되고, 지난달과 비교해 새로 생기거나 더 짙어진 여론은 맨 위 <b>🆕 지난달 대비 달라진 여론</b>에 따로 표시돼요.`,
       `맨 아래 <b>게시물별 댓글 요약</b>에서 최근 한 달 게시물을 일상 · 레시피 · 공구 · 이벤트별로 골라 보고, 눌러서 펼치면 그 게시물 댓글 요약과 원본 게시물 링크가 나와요.`
@@ -1764,6 +1764,8 @@ let opFilter = "전체", opDone = false;
 const OP_LV = {"높음": "high", "중간": "mid", "낮음": "low"};
 function renderOpinion() {
   if (!OPINION || opDone) return; opDone = true;
+  { const eb = document.querySelector("#v-op .eyebrow"), md0 = s => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
+    if (eb && OPINION.from && OPINION.to) eb.textContent = `최근 팔로워 댓글 · ${md0(OPINION.from)}~${md0(OPINION.to)} 게시물`; }
   const O = {headline: [], mood: [], loves: [], asks: [], wants: [], warns: [], kinds: [], who: [], ideas: [], posts: [], ...OPINION}, md = s => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
   const sec = (title, sub, body) => `<section class="op-sec"><h3>${title}${sub ? `<small>${sub}</small>` : ""}</h3>${body}</section>`;
   const card = (t, d, extra = "") => `<div class="op-card"><b>${escRaw(t)}</b><p>${escRaw(d)}</p>${extra}</div>`;
