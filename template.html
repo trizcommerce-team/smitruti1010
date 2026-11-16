@@ -1766,7 +1766,15 @@ function renderOpinion() {
   const sec = (title, sub, body) => `<section class="op-sec"><h3>${title}${sub ? `<small>${sub}</small>` : ""}</h3>${body}</section>`;
   const card = (t, d, extra = "") => `<div class="op-card"><b>${escRaw(t)}</b><p>${escRaw(d)}</p>${extra}</div>`;
   const IQ = O.iq;
-  const MOOD = IQ && IQ.counted ? O.mood.map(m => ({...m, n: IQ.mood[m.k] || 0, v: Math.round((IQ.mood[m.k] || 0) / IQ.counted * 100)})) : O.mood;
+  // 합쳐서 100%가 되는 비율(댓글 분위기): admin 에서 일부를 빼고 연동해도 남은 것끼리 다시 나눠 합계 100%로 맞춤
+  const fit100 = arr => {
+    const tot = arr.reduce((a, m) => a + m.raw, 0); if (!tot) return arr;
+    const ex = arr.map(m => m.raw / tot * 100), fl = ex.map(Math.floor);
+    let rest = 100 - fl.reduce((a, b) => a + b, 0);
+    ex.map((x, i) => [x - fl[i], i]).sort((a, b) => b[0] - a[0]).slice(0, rest).forEach(([, i]) => fl[i]++);
+    return arr.map((m, i) => ({...m, v: fl[i]}));
+  };
+  const MOOD = fit100((IQ && IQ.counted ? O.mood.map(m => ({...m, n: IQ.mood[m.k] || 0})) : O.mood).map(m => ({...m, raw: m.n != null ? +m.n : +m.v || 0})));
   const moodNote = IQ && IQ.counted ? `${md(IQ.from)}~${md(IQ.to)} 팔로워 댓글 ${IQ.counted.toLocaleString()}개 전체를 성격별로 나눈 비율이에요${IQ.entries ? ` (이벤트 응모 댓글 ${IQ.entries.toLocaleString()}개는 따로 뺐어요)` : ""}` : O.moodNote;
   const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
   const iqReply = !IQ ? "" : (() => {
