@@ -381,6 +381,7 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 .op-post .bd .meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .op-post .bd a{display:inline-block;margin-top:8px;font-size:13px;font-weight:600;color:var(--accent)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
 /* ===== 새 디자인 (테스트): 밝은 파랑, 둥근 카드, 반듯한 글꼴 ===== */
 /* 하단 메뉴: 보이는 탭 개수에 맞춰 한 줄로 나눠 채움 (3개든 4개든 줄바꿈 없음) */
 .nav{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
@@ -1032,7 +1033,8 @@ function openIdea(it) {
   const exText = x => it.make?.includes(x) ? `🍳 ${x} 만들어보기` : `📌 ${x}`;
   // 유행·검색량 기획은 출처 링크·설명을 보여 주지 않음 (srcLink 숨김, 근거 문장 속 주소도 지움) — 참고한 내 게시물 링크는 유지
   const trendy = (it.src || []).some(x => x === "trend" || x === "search");
-  const basis = it.basis && trendy ? it.basis.replace(/\s*[(（]?(https?:\/\/|www\.)\S+[)）]?/g, "").trim() : it.basis;
+  // 유행 콘텐츠(src 에 trend)는 기획 근거 자체를 보여 주지 않음 (2026-11-16 재열님)
+  const basis = (it.src || []).includes("trend") ? "" : it.basis && trendy ? it.basis.replace(/\s*[(（]?(https?:\/\/|www\.)\S+[)）]?/g, "").trim() : it.basis;
   const lines = [`[${goal} · ${it.f}] ${it.t}`,
     `핵심 기획 의도: ${it.intent}`, `저격 타깃: ${it.target}`, `목표 지표: ${it.kpi}`, `목표 셀러 이미지: ${it.image}`,
     `후킹 문구:\n${hooks.map(h => `- ${h}`).join("\n")}`,
@@ -1279,7 +1281,7 @@ function openHelp() { // 캘린더마다 있는 기능만 골라서 설명
     ${OPINION ? sec("💬 댓글 여론", [
       `화면 아래 <b>댓글 여론</b> 메뉴에서 최근 게시물에 달린 팔로워 댓글을 한눈에 정리해 볼 수 있어요.`,
       `<b>한눈에 보기 · 주의 신호 · 좋아하는 점 · 자주 묻는 질문 · 요청</b> 순서로 보여드려요.`,
-      `<b>매월 초</b>에 새로 정리되고, 지난달과 비교해 새로 생기거나 더 짙어진 여론은 맨 위 <b>🆕 지난달 대비 달라진 여론</b>에 따로 표시돼요.`,
+      `<b>매월 초</b>에 새로 정리되고, 지난 정리와 비교해 새로 생기거나 더 짙어진 여론은 맨 위 <b>🆕 지난달 대비 달라진 여론</b>에 따로 표시돼요.`,
       `맨 아래 <b>게시물별 댓글 요약</b>에서 최근 한 달 게시물을 일상 · 레시피 · 공구 · 이벤트별로 골라 보고, 눌러서 펼치면 그 게시물 댓글 요약과 원본 게시물 링크가 나와요.`
     ]) : ""}
     ${sec("🔔 휴대폰 알림 받기", [
@@ -1778,26 +1780,27 @@ function renderOpinion() {
     ex.map((x, i) => [x - fl[i], i]).sort((a, b) => b[0] - a[0]).slice(0, rest).forEach(([, i]) => fl[i]++);
     return arr.map((m, i) => ({...m, v: fl[i]}));
   };
-  const MOOD = fit100((IQ && IQ.counted ? O.mood.map(m => ({...m, n: IQ.mood[m.k] || 0})) : O.mood).map(m => ({...m, raw: m.n != null ? +m.n : +m.v || 0})));
-  const moodNote = IQ && IQ.counted ? `${md(IQ.from)}~${md(IQ.to)} 팔로워 댓글 ${IQ.counted.toLocaleString()}개 전체를 성격별로 나눈 비율이에요${IQ.entries ? ` (이벤트 응모 댓글 ${IQ.entries.toLocaleString()}개는 따로 뺐어요)` : ""}` : O.moodNote;
+  const MOOD = fit100((IQ && IQ.counted && IQ.mood ? O.mood.map(m => ({...m, n: IQ.mood[m.k] || 0})) : O.mood).map(m => ({...m, raw: m.n != null ? +m.n : +m.v || 0})));
+  const moodNote = IQ && IQ.counted && IQ.mood ? `${md(IQ.from)}~${md(IQ.to)} 팔로워 댓글 ${IQ.counted.toLocaleString()}개 전체를 성격별로 나눈 비율이에요${IQ.entries ? ` (이벤트 응모 댓글 ${IQ.entries.toLocaleString()}개는 따로 뺐어요)` : ""}` : O.moodNote;
   const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
-  const iqReply = !IQ ? "" : (() => {
+  const iqReply = !(IQ && IQ.replies) ? "" : (() => {
     const r = IQ.replies, got = pct(r.got, r.users), tp = pct(r.template, r.seller);
     const tiles = [["셀러 답글", `${r.seller.toLocaleString()}개`], ["답글 받은 팔로워", `${got}%`], ["같은 문구 답글", `${tp}%`]];
     return `<div class="op-card"><div class="op-stats">${tiles.map(([k, v]) => `<div><b>${v}</b><span>${k}</span></div>`).join("")}</div>
       <p style="margin-top:10px">댓글을 단 팔로워 100명 중 ${got}명이 셀러 답글을 받았어요.${r.template ? ` 셀러 답글 ${r.seller.toLocaleString()}개 중 ${r.template.toLocaleString()}개(${tp}%)는 같은 안내 문구를 여러 번 붙여 넣은 답글이에요.` : ""}</p></div>`;
   })();
-  const iqQ = !IQ ? "" : (() => {
+  const iqQ = !(IQ && IQ.questions) ? "" : (() => {
     const q = IQ.questions;
     // 정렬: ① 같은·비슷한 질문 수(e.n/e.cnt 가 있으면 그 값, 없으면 예시끼리 글자 2개 묶음이 60% 이상 겹치는 질문 수)
-    //       ② 좋아요 수(e.likes/e.lk 가 있을 때) ③ 원래 순서(최신 날짜순)
+    //       ② 좋아요 수(e.likes/e.lk 가 있을 때) ③ 최근 날짜(e.d 'MM/DD') ④ 원래 순서
     const bi = s => { const k = String(s || "").replace(/[^가-힣a-zA-Z0-9]/g, ""), b = new Set(); for (let i = 0; i < k.length - 1; i++) b.add(k.slice(i, i + 2)); return b; };
     const alike = (a, b) => { const m = Math.min(a.size, b.size); if (m < 4) return false; let n = 0; a.forEach(x => { if (b.has(x)) n++; }); return n / m >= 0.6; };
     const qs = (q.examples || []).map((e, i) => ({e, i, b: bi(e.q)}));
-    qs.forEach(x => { x.dup = +x.e.n || +x.e.cnt || 1 + qs.filter(y => y !== x && alike(x.b, y.b)).length; x.lk = +x.e.likes || +x.e.lk || 0; });
-    qs.sort((a, b) => b.dup - a.dup || b.lk - a.lk || a.i - b.i);
-    return `<div class="op-card"><p>팔로워 질문 ${q.total.toLocaleString()}개 중 <b style="display:inline">${q.unanswered.toLocaleString()}개(${pct(q.unanswered, q.total)}%)</b>에 댓글 답글이 달리지 않았어요. DM이나 스토리로 답했을 수도 있어요.</p></div>` +
-      (qs.length ? `<p style="margin:2px 2px 8px;font-size:12px;color:var(--muted)">위에서부터 많이 묻거나 좋아요가 많은 질문 순서예요</p>` : "") +
+    const dnum = s => { const m = String(s || "").match(/(\d{1,2})\/(\d{1,2})/); return m ? +m[1] * 100 + +m[2] : 0; };
+    qs.forEach(x => { x.dup = +x.e.n || +x.e.cnt || 1 + qs.filter(y => y !== x && alike(x.b, y.b)).length; x.lk = +x.e.likes || +x.e.lk || 0; x.dn = dnum(x.e.d); });
+    qs.sort((a, b) => b.dup - a.dup || b.lk - a.lk || b.dn - a.dn || a.i - b.i);
+    return (q.total == null ? "" : `<div class="op-card"><p>팔로워 질문 ${q.total.toLocaleString()}개 중 <b style="display:inline">${q.unanswered.toLocaleString()}개(${pct(q.unanswered, q.total)}%)</b>에 댓글 답글이 달리지 않았어요. DM이나 스토리로 답했을 수도 있어요.</p></div>`) +
+      (qs.length ? `<p style="margin:2px 2px 8px;font-size:12px;color:var(--muted)">위에서부터 중복 질문이 많거나, 좋아요가 많은 질문, 최근 질문 순서예요</p>` : "") +
       qs.map(({e, dup}) => `<div class="op-card"><div class="op-head"><b style="font-weight:500">${escRaw(e.q)}</b><span>${escRaw(e.d)}</span></div>${dup >= 2 ? `<span style="display:inline-block;margin:6px 6px 0 0;padding:2px 8px;border-radius:999px;background:var(--surface-2);font-size:11.5px;font-weight:600;color:var(--muted)">비슷한 질문 ${dup}개</span>` : ""}${e.url ? `<a class="src2" href="${escRaw(e.url)}" target="_blank" rel="noopener">${escRaw(e.post || "게시물 보기")} ↗</a>` : ""}</div>`).join("");
   })();
   const total = MOOD.reduce((n, m) => n + m.v, 0);
@@ -1824,12 +1827,12 @@ function renderOpinion() {
       <h2>팔로워는 이렇게 말해요</h2>
       <div class="full">${md(O.from)}~${md(O.to)} 게시물 ${O.count}개 · 팔로워 댓글 ${O.read.toLocaleString()}개를 직접 읽고 정리했어요</div>
       <p class="idea-intro" style="margin-top:8px">${escRaw(O.note)} ${md(O.at)} 정리.</p></div>
-    ${!O.changes ? "" : sec("🆕 지난달 대비 달라진 여론", ch.since ? `${md(ch.since)} 정리와 비교해 최근 한 달 새로 보이거나 더 짙어진 여론이에요` : "", chBody)}
+    ${!O.changes ? "" : sec("🆕 지난 기간 대비 달라진 여론", ch.since ? `${md(ch.since)} 정리와 비교해 새로 보이거나 더 짙어진 여론이에요` : "", chBody)}
     ${!O.headline.length ? "" : sec("한눈에 보기", "", `<ol class="op-hl">${O.headline.map(h => `<li>${escRaw(h)}</li>`).join("")}</ol>`)}
     ${!MOOD.length ? "" : sec("댓글 분위기", escRaw(moodNote), `<div class="op-card"><div class="op-stack" role="img" aria-label="${escRaw(MOOD.map(m => `${m.k} ${m.v}%`).join(", "))}">${MOOD.map(m => `<i style="--c:${m.c};width:${m.v / total * 100}%"></i>`).join("")}</div>
       <div class="op-legend">${MOOD.map(m => `<div style="--c:${m.c}"><i></i><span>${escRaw(m.k)}${m.n != null ? ` <small style="display:inline;color:var(--muted)">${m.n.toLocaleString()}개</small>` : ""}</span><em>${m.v}%</em><small>${escRaw(m.ex)}</small></div>`).join("")}</div></div>`)}
-    ${IQ ? sec("💬 답글 소통", `${md(IQ.from)}~${md(IQ.to)} 게시물 ${IQ.posts}개의 전체 댓글 기준`, iqReply) : ""}
-    ${IQ ? sec("🙋 답을 기다리는 질문", "셀러 답글이 달리지 않은 팔로워 질문이에요. 콘텐츠나 Q&A 소재로 쓰기 좋아요", iqQ) : ""}
+    ${iqReply ? sec("💬 답글 소통", `${md(IQ.from)}~${md(IQ.to)} 게시물 ${IQ.posts}개의 전체 댓글 기준`, iqReply) : ""}
+    ${iqQ ? sec("🙋 답을 기다리는 질문", "셀러 답글이 달리지 않은 팔로워 질문이에요. 콘텐츠나 Q&A 소재로 쓰기 좋아요", iqQ) : ""}
     ${!O.warns.length ? "" : sec("⚠️ 주의 신호", "놓치면 신뢰가 깎일 수 있는 댓글이에요", O.warns.map(w => `<div class="op-card"><div class="op-head"><b>${escRaw(w.t)}</b><span class="op-lv ${OP_LV[w.lv] || "low"}">${escRaw(w.lv)}</span></div><p>${escRaw(w.d)}</p></div>`).join(""))}
     ${!O.loves.length ? "" : sec("❤️ 팔로워가 좋아하는 점", "", O.loves.map(l => card(l.t, l.d, `<span class="src2">근거: ${escRaw(l.src)}</span>`)).join(""))}
     ${!O.asks.length ? "" : sec("❓ 자주 묻는 질문", "답을 미리 콘텐츠에 넣으면 저장·신뢰가 올라가요", O.asks.map(a => `<div class="op-card"><div class="op-head"><b>${escRaw(a.t)}</b><span>${escRaw(a.n)}</span></div><p>${escRaw(a.d)}</p>${a.tip ? `<span class="tip">💡 ${escRaw(a.tip)}</span>` : ""}</div>`).join(""))}

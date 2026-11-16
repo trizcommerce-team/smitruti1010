@@ -44,8 +44,25 @@ def merge(live, draft, keys):
             if picked:
                 out[sec] = picked
         elif isinstance(val, dict):
-            if sec in keys:
+            if sec in keys:                 # 예전 방식: 묶음 통째로
                 out[sec] = val
+            elif sec == "changes":          # 낱개 체크: changes:new:0, changes:deeper:2
+                new = [x for i, x in enumerate(val.get("new") or []) if f"changes:new:{i}" in keys]
+                deeper = [x for i, x in enumerate(val.get("deeper") or []) if f"changes:deeper:{i}" in keys]
+                if new or deeper:
+                    out[sec] = {k: v for k, v in val.items() if k not in ("new", "deeper")} | {"new": new, "deeper": deeper}
+            elif sec == "iq":               # 낱개 체크: iq:mood, iq:replies, iq:questions, iq:ex:3
+                iq = {k: val[k] for k in ("from", "to", "posts", "comments") if k in val}
+                if "iq:mood" in keys:
+                    iq.update({k: val[k] for k in ("mood", "counted", "entries") if k in val})
+                if "iq:replies" in keys and "replies" in val:
+                    iq["replies"] = val["replies"]
+                q = val.get("questions") or {}
+                ex = [e for i, e in enumerate(q.get("examples") or []) if f"iq:ex:{i}" in keys]
+                if "iq:questions" in keys or ex:
+                    iq["questions"] = ({k: v for k, v in q.items() if k != "examples"} if "iq:questions" in keys else {}) | {"examples": ex}
+                if any(k in iq for k in ("mood", "replies", "questions")):
+                    out[sec] = iq
         else:
             out[sec] = val
     if out.get("posts"):
