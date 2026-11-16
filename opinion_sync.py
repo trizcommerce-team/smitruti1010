@@ -1,8 +1,8 @@
 """댓글 여론 '최종 연동': admin 에서 체크한 항목만 셀러 캘린더 opinion.json 에 넣는다.
 - admin 검토 대기 초안: https://trizcommerce.github.io/admin/drafts/<저장소>/opinion.json
 - 체크 목록: 조회 기록 Apps Script  ?action=opinion_sync&repo=<저장소>  (admin 의 '최종 연동' 버튼이 보냄)
-- 체크 목록이 지금 초안(at 같은 것)에 대한 것이면, 섹션마다 체크한 항목만 골라 셀러 opinion.json 을 바꾼다.
-  체크가 하나도 없는 섹션은 지금 셀러 내용을 그대로 둔다. 기간·정리 날짜 같은 기본 정보는 무언가 하나라도 연동되면 새 초안 것으로.
+- 체크 목록이 지금 초안(at 같은 것)에 대한 것이면, 셀러 opinion.json 을 '초안에서 체크한 항목만'으로 바꾼다.
+  체크를 다 뺀 묶음은 셀러 화면에서 빠진다(2026-11-16 재열님: 체크 해제가 반영 안 된다고 해서 바꿈).
 build_app.py 가 빌드 때 부른다(실패해도 빌드는 계속). 바뀌면 GitHub Actions 가 opinion.json 을 커밋해 남긴다."""
 import json, os, re, urllib.request
 from pathlib import Path
@@ -33,27 +33,25 @@ def _day(v):
 
 
 def merge(live, draft, keys):
-    """keys: ["headline:0", "loves:2", "changes", ...]"""
+    """keys: ["headline:0", "loves:2", "changes", ...]
+    셀러 캘린더 = 초안에서 '체크한 항목만'. 체크를 다 뺀 묶음은 셀러 화면에서 빠진다.
+    기간·정리 날짜·안내 문구 같은 기본 정보(목록·묶음이 아닌 값)는 초안 그대로."""
     keys = set(keys)
-    out = dict(live or {})
-    touched = False
+    out = {}
     for sec, val in draft.items():
         if isinstance(val, list):
             picked = [it for i, it in enumerate(val) if f"{sec}:{i}" in keys]
             if picked:
                 out[sec] = picked
-                touched = True
-        elif isinstance(val, dict) and sec in keys:
+        elif isinstance(val, dict):
+            if sec in keys:
+                out[sec] = val
+        else:
             out[sec] = val
-            touched = True
-    if touched:
-        for m in META:
-            if m in draft:
-                out[m] = draft[m]
-        if isinstance(out.get("posts"), list):
-            out["count"] = len(out["posts"])
-            out["read"] = sum(int(p.get("n") or 0) for p in out["posts"])
-    return out, touched
+    if out.get("posts"):
+        out["count"] = len(out["posts"])
+        out["read"] = sum(int(p.get("n") or 0) for p in out["posts"])
+    return out, bool(keys)
 
 
 def apply(here: Path):
