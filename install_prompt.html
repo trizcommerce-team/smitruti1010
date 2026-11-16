@@ -107,7 +107,20 @@
 .inst-alt summary{cursor:pointer;padding:8px 2px;font-size:13.5px;color:var(--muted,#777);font-weight:600}
 .inst-alt .inst-opt{border-color:transparent!important;background:var(--surface-2,#f3f3f3)!important;margin-top:6px}
 .inst-later{display:block;width:100%;padding:12px;font-size:14px;color:var(--muted,#777)}
+/* 아이폰: 공유 버튼 위치를 화살표로 짚어 주는 안내 */
+.coach{position:fixed;inset:0;z-index:96;background:rgba(0,0,0,.55);color:#fff;font-size:15px;line-height:1.55}
+.coach[hidden]{display:none}
+.coach-bub{position:absolute;left:16px;right:16px;background:#fff;color:#222;border-radius:18px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.coach-bub b{color:var(--accent,#b5523b)}
+.coach-bub ol{margin:6px 0 0;padding-left:20px}
+.coach-bub .coach-x{display:block;margin:10px auto 0;padding:8px 18px;border-radius:999px;background:var(--surface-2,#f1f1f1);font-size:13.5px;color:#555}
+.coach-arrow{position:absolute;width:56px;height:56px;margin-left:-28px;font-size:52px;line-height:56px;text-align:center;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));animation:coachB 1s ease-in-out infinite}
+.coach-arrow.up{animation-name:coachU}
+@keyframes coachB{0%,100%{transform:translateY(0)}50%{transform:translateY(12px)}}
+@keyframes coachU{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@media (prefers-reduced-motion:reduce){.coach-arrow{animation:none}}
 </style>
+<div class="coach" id="coach" hidden><div class="coach-arrow" id="coach-arrow">⬇</div><div class="coach-bub" id="coach-bub"></div></div>
 <script>
 (function () {
   var ua = navigator.userAgent;
@@ -193,11 +206,45 @@
         if (c && c.outcome === "accepted") { set("instDone", "1"); finish("바로가기를 만들었어요! 바탕화면(홈 화면)에서 캘린더 아이콘을 눌러 주세요."); }
       });
     } else if (isIOS) {
-      showGuide("Safari에서 이렇게 해 주세요.<ol><li>화면 아래 <b>공유 버튼</b>(네모에 위 화살표)을 눌러요.</li><li><b>홈 화면에 추가</b>를 누르고 <b>추가</b>를 눌러요.</li></ol>");
+      coach();                                         // 아이폰은 설치 창을 띄울 수 없어 공유 버튼 위치를 화살표로 짚어 줌
     } else {
       showGuide("브라우저 메뉴에서 바로가기를 만들어 주세요.<ol><li>오른쪽 위 <b>⋮</b> 메뉴를 눌러요.</li><li><b>앱 설치</b> 또는 <b>홈 화면에 추가</b>를 눌러요.</li></ol>");
     }
   };
+  // 아이폰 화살표 안내: 브라우저·버전에 따라 공유 버튼 위치가 다름
+  //  - 아이폰 사파리(iOS 18 이하): 아래 툴바 가운데 공유 버튼
+  //  - 아이폰 사파리(iOS 26~): 아래 오른쪽 ⋯ → 공유
+  //  - 아이폰 크롬(CriOS)·아이패드 사파리: 위쪽 오른쪽 공유 버튼
+  function coach() {
+    var iosV = +((ua.match(/OS (\d+)_/) || [])[1] || 0), safariV = +((ua.match(/Version\/(\d+)/) || [])[1] || 0);
+    var isPad = /iPad/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    var chrome = /CriOS/i.test(ua), edge = /EdgiOS/i.test(ua), fx = /FxiOS/i.test(ua);
+    var arrow = document.getElementById("coach-arrow"), bub = document.getElementById("coach-bub"), ov = document.getElementById("coach");
+    var top = isPad || chrome || edge, x, steps;
+    if (top) {
+      x = isPad && !chrome ? "calc(100% - 96px)" : "calc(100% - 40px)";
+      steps = "<li>화살표가 가리키는 <b>공유 버튼</b>(네모에 위 화살표)을 눌러요.</li><li>목록에서 <b>홈 화면에 추가</b>를 눌러요. (안 보이면 아래로 내리거나 <b>더 보기</b>)</li><li>오른쪽 위 <b>추가</b>를 누르면 끝이에요.</li>";
+    } else if (fx) {
+      x = "calc(100% - 40px)";
+      steps = "<li>화살표가 가리키는 <b>≡ 메뉴</b>를 눌러요.</li><li><b>공유</b> → <b>홈 화면에 추가</b>를 눌러요.</li><li><b>추가</b>를 누르면 끝이에요.</li>";
+    } else if (iosV >= 26 || safariV >= 26) {
+      x = "calc(100% - 34px)";
+      steps = "<li>화살표가 가리키는 <b>⋯</b> 버튼을 눌러요.</li><li><b>공유</b>를 누르고, 목록을 내려 <b>홈 화면에 추가</b>를 눌러요.</li><li>오른쪽 위 <b>추가</b>를 누르면 끝이에요.</li>";
+    } else {
+      x = "50%";
+      steps = "<li>화살표가 가리키는 <b>공유 버튼</b>(네모에 위 화살표)을 눌러요.</li><li>목록을 내려 <b>홈 화면에 추가</b>를 눌러요.</li><li>오른쪽 위 <b>추가</b>를 누르면 끝이에요.</li>";
+    }
+    arrow.className = "coach-arrow" + (top ? " up" : "");
+    arrow.textContent = top ? "⬆" : "⬇";
+    arrow.style.left = x;
+    arrow.style.top = top ? "6px" : ""; arrow.style.bottom = top ? "" : "calc(env(safe-area-inset-bottom, 0px) + 4px)";
+    bub.style.top = top ? "74px" : ""; bub.style.bottom = top ? "" : "calc(env(safe-area-inset-bottom, 0px) + 74px)";
+    bub.innerHTML = "<b>홈 화면에 캘린더 아이콘 만들기</b><ol>" + steps + "</ol>" +
+      (top ? "" : "<p style=\"margin:6px 0 0;font-size:12.5px;color:#777\">아래 버튼들이 안 보이면 화면을 살짝 위로 올리거나 아래쪽을 한 번 눌러 주세요.</p>") +
+      "<button type=\"button\" class=\"coach-x\" id=\"coach-x\">닫기</button>";
+    box.hidden = true; ov.hidden = false;
+    document.getElementById("coach-x").onclick = function () { ov.hidden = true; sset("instLater", "1"); };
+  }
   later.onclick = function () { sset("instLater", "1"); close(); };
 
   // 이름 입력 창이 떠 있으면 그게 끝난 뒤에 띄움
