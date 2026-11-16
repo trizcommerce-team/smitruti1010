@@ -140,7 +140,7 @@ a{color:var(--accent)}
 .idea-brief b{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-bottom:1px}
 .idea-learn{display:block;margin:-2px 2px 8px;font-size:11.5px;color:var(--muted)}
 .idea-card{display:flex;flex-direction:column;gap:0}
-.idea-card .entry{border-bottom-left-radius:0;border-bottom-right-radius:0}
+.idea-card.has-votes .entry{border-bottom-left-radius:0;border-bottom-right-radius:0}
 .votes{display:flex;gap:6px;padding:7px 12px 9px;background:var(--surface);border-radius:0 0 16px 16px;box-shadow:var(--shadow);margin-top:-1px}
 .vote{flex:1;height:30px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--muted);background:transparent;box-shadow:inset 0 0 0 1px var(--line, rgba(127,127,127,.25))}
 .vote.up.on{background:#DFF3E4;color:#1E6B34;box-shadow:none}
@@ -537,6 +537,7 @@ details.fold,.op-card,.op-post,.op-hl li{border-radius:18px}
 const DATA = /*__DATA__*/null;
 const IDEAS = /*__IDEAS__*/null;
 const OPINION = /*__OPINION__*/null; // 최근 3개월 댓글 여론 (opinion.json 이 있는 앱만) // 일상 콘텐츠 추천 (ideas.json 이 있는 앱만)
+const IS_ADMIN = !!window.__ADM; // admin(관리자) 화면에서만 true — 셀러 사이트에는 없음
 const SRC = {trend: ["🔥", "유행"], search: ["🔎", "검색량"], fan: ["💬", "팔로워 관심"], perf: ["📈", "성과 검증"], season: ["🍂", "시즌"]};
 const srcChips = it => (it.src || []).map(k => SRC[k] ? `<span class="src ${k}">${SRC[k][0]} ${SRC[k][1]}</span>` : "").join("");
 const $ = s => document.querySelector(s);
@@ -988,13 +989,13 @@ function ideasHTML() {
       const ref = it.ref && IDEAS.refs[it.ref];
       const meta = [it.f, `🎯 ${it.kpi}`, ...it.why];
       const v = ideaVotes[it.t]?.v || 0;
-      return `<div class="idea-card"><button type="button" class="entry idea" data-idea="${i}">
+      return `<div class="idea-card${IS_ADMIN ? " has-votes" : ""}"><button type="button" class="entry idea" data-idea="${i}">
       <span class="fmt idea-g ${it.g}">${esc(IDEAS.short[it.g])}</span>
       <span class="e-body">${it.src?.length ? `<span class="srcs">${srcChips(it)}</span>` : ""}<span class="e-title">${esc(it.t)}</span><span class="e-prev">${esc(it.hooks ? it.hooks[0] : ref ? ref.point : it.whyText)}</span>
       ${it.make?.length ? `<span class="e-make">🍳 만들어보기: ${esc(it.make.slice(0, 2).join(", "))}</span>` : it.examples?.length ? `<span class="e-make">📌 예시: ${esc(it.examples.slice(0, 2).join(", "))}</span>` : ""}
       <span class="e-meta">${meta.map(w => `<span>${esc(w)}</span>`).join("")}</span></span>
       <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
-      ${voteBtns(i, v)}</div>`;
+      ${IS_ADMIN ? voteBtns(i, v) : ""}</div>`;
     }).join("")}</div>`;
 }
 const voteBtns = (i, v) => `<div class="votes"><button type="button" class="vote up${v > 0 ? " on" : ""}" data-vote="${i}" data-v="1" aria-pressed="${v > 0}" aria-label="좋아요">👍 좋아요</button><button type="button" class="vote down${v < 0 ? " on" : ""}" data-vote="${i}" data-v="-1" aria-pressed="${v < 0}" aria-label="싫어요">👎 별로예요</button></div>`;
@@ -1029,6 +1030,9 @@ function openIdea(it) {
   const scene = it.scene || it.steps || [];
   const ex = it.examples || it.make || [];
   const exText = x => it.make?.includes(x) ? `🍳 ${x} 만들어보기` : `📌 ${x}`;
+  // 유행·검색량 기획은 출처 링크·설명을 보여 주지 않음 (srcLink 숨김, 근거 문장 속 주소도 지움) — 참고한 내 게시물 링크는 유지
+  const trendy = (it.src || []).some(x => x === "trend" || x === "search");
+  const basis = it.basis && trendy ? it.basis.replace(/\s*[(（]?(https?:\/\/|www\.)\S+[)）]?/g, "").trim() : it.basis;
   const lines = [`[${goal} · ${it.f}] ${it.t}`,
     `핵심 기획 의도: ${it.intent}`, `저격 타깃: ${it.target}`, `목표 지표: ${it.kpi}`, `목표 셀러 이미지: ${it.image}`,
     `후킹 문구:\n${hooks.map(h => `- ${h}`).join("\n")}`,
@@ -1037,8 +1041,7 @@ function openIdea(it) {
     ...(ex.length ? [`구체 예시${it.make?.length ? " · 이번 시즌 만들어보기" : ""}:\n${ex.map(x => `- ${exText(x)}`).join("\n")}`] : []),
     `스토리 연계: ${it.story}`, `행동 유도 문구: ${it.cta}`,
     ...(it.caption ? [`캡션 첫 문단:\n${it.caption}`] : []), ...(it.tip ? [`제작 팁: ${it.tip}`] : []),
-    ...(it.basis ? [`기획 근거: ${it.basis}`] : []),
-    ...(it.srcLink ? [`유행 출처: ${it.srcLink.label} ${it.srcLink.url}`] : []),
+    ...(basis ? [`기획 근거: ${basis}`] : []),
     ...(ref ? [`참고 게시물: ${ref.label} (${ref.stat}) ${ref.url}`] : [])];
   const field = (lb, html, cls = "") => `<div class="field${cls}"><div class="lb">${lb}</div><div class="tx">${html}</div></div>`;
   openSheet(`<span class="pill">${esc(goal)}</span><span class="pill ghost">${esc(it.f)}</span>`, it.t,
@@ -1057,12 +1060,11 @@ function openIdea(it) {
     field("행동 유도 문구", esc(it.cta)) +
     (it.caption ? field("캡션 첫 문단", esc(it.caption)) : "") +
     (it.tip ? field("제작 팁", esc(it.tip)) : "") +
-    (it.basis ? field("기획 근거", esc(it.basis)) : "") +
-    (it.srcLink ? field("유행 출처", `<a href="${safeUrl(it.srcLink.url)}" target="_blank" rel="noopener">${esc(it.srcLink.label)}</a>`) : "") +
+    (basis ? field("기획 근거", esc(basis)) : "") +
     (ref ? field("참고한 게시물", `<a href="${safeUrl(ref.url)}" target="_blank" rel="noopener">${esc(ref.label)}</a>\n${esc(ref.stat)}\n${esc(ref.point)}`) : "") +
     (Array.isArray(it.why) && it.why.length ? field("오늘 추천한 이유", esc(it.why.join(" · "))) : "") +
     `<div class="cap-tools"><button type="button" class="cap-btn" id="idea-copy">기획 메모 복사</button></div>` +
-    (ideaShown.includes(it) ? `<div class="sheet-votes">${voteBtns(ideaShown.indexOf(it), ideaVotes[it.t]?.v || 0)}</div>` : ""));
+    (IS_ADMIN && ideaShown.includes(it) ? `<div class="sheet-votes">${voteBtns(ideaShown.indexOf(it), ideaVotes[it.t]?.v || 0)}</div>` : ""));
   $("#idea-copy").onclick = () => copyText(lines.join("\n\n"));
   document.querySelectorAll(".sheet-votes .vote").forEach(b => b.onclick = () => { closeSheet(); voteIdea(+b.dataset.vote, +b.dataset.v); });
 }
@@ -1271,14 +1273,14 @@ function openHelp() { // 캘린더마다 있는 기능만 골라서 설명
       hasEx ? `<b>📌 예시</b>에는 바로 활용할 수 있는 구체적인 메뉴·장소·소재가 담겨 있어요.` : "",
       `주제를 누르면 <b>기획 의도 · 타깃 · 후킹 문구 · 컷 구성 · 촬영 가이드 · 스토리 연계 · 행동 유도 문구</b>까지 담긴 기획서가 열려요. ${k("기획 메모 복사")}로 메모장에 옮겨 두실 수 있어요.`,
       `다른 아이디어를 보고 싶으면 ${k("다른 주제")}를 눌러 주세요. 지금 보이는 것과 겹치지 않는 다른 8개를 보여 드려요.`,
-      `마음에 들면 <b>👍 좋아요</b>, 별로면 <b>👎 별로예요</b>를 눌러 주세요. 좋아요한 것과 비슷한 주제는 더, 별로예요한 것은 덜 추천해 드려요. 같은 버튼을 한 번 더 누르면 취소돼요.`,
-      `아무것도 안 누르고 넘겨도 괜찮아요. ‘무난했다’로 보고 나중에 다시 추천해 드려요.`
+      IS_ADMIN ? `마음에 들면 <b>👍 좋아요</b>, 별로면 <b>👎 별로예요</b>를 눌러 주세요. 좋아요한 것과 비슷한 주제는 더, 별로예요한 것은 덜 추천해 드려요. 같은 버튼을 한 번 더 누르면 취소돼요.` : "",
+      IS_ADMIN ? `아무것도 안 누르고 넘겨도 괜찮아요. ‘무난했다’로 보고 나중에 다시 추천해 드려요.` : ""
     ].filter(Boolean)) : ""}
     ${OPINION ? sec("💬 댓글 여론", [
       `화면 아래 <b>댓글 여론</b> 메뉴에서 최근 3개월 게시물에 달린 팔로워 댓글을 한눈에 정리해 볼 수 있어요.`,
       `<b>한눈에 보기 · 주의 신호 · 좋아하는 점 · 자주 묻는 질문 · 요청</b> 순서로 보여드려요.`,
       `<b>매월 초</b>에 새로 정리되고, 지난달과 비교해 새로 생기거나 더 짙어진 여론은 맨 위 <b>🆕 지난달 대비 달라진 여론</b>에 따로 표시돼요.`,
-      `맨 아래 <b>게시물별 댓글 요약</b>에서 일상 · 레시피 · 공구 · 이벤트별로 골라 보고, 눌러서 펼치면 그 게시물 댓글 요약과 원본 게시물 링크가 나와요.`
+      `맨 아래 <b>게시물별 댓글 요약</b>에서 최근 한 달 게시물을 일상 · 레시피 · 공구 · 이벤트별로 골라 보고, 눌러서 펼치면 그 게시물 댓글 요약과 원본 게시물 링크가 나와요.`
     ]) : ""}
     ${sec("🔔 휴대폰 알림 받기", [
       `달력 오른쪽 위 <b>종 모양 버튼</b>을 눌러 주세요.`,
@@ -1785,8 +1787,16 @@ function renderOpinion() {
   })();
   const iqQ = !IQ ? "" : (() => {
     const q = IQ.questions;
+    // 정렬: ① 같은·비슷한 질문 수(e.n/e.cnt 가 있으면 그 값, 없으면 예시끼리 글자 2개 묶음이 60% 이상 겹치는 질문 수)
+    //       ② 좋아요 수(e.likes/e.lk 가 있을 때) ③ 원래 순서(최신 날짜순)
+    const bi = s => { const k = String(s || "").replace(/[^가-힣a-zA-Z0-9]/g, ""), b = new Set(); for (let i = 0; i < k.length - 1; i++) b.add(k.slice(i, i + 2)); return b; };
+    const alike = (a, b) => { const m = Math.min(a.size, b.size); if (m < 4) return false; let n = 0; a.forEach(x => { if (b.has(x)) n++; }); return n / m >= 0.6; };
+    const qs = (q.examples || []).map((e, i) => ({e, i, b: bi(e.q)}));
+    qs.forEach(x => { x.dup = +x.e.n || +x.e.cnt || 1 + qs.filter(y => y !== x && alike(x.b, y.b)).length; x.lk = +x.e.likes || +x.e.lk || 0; });
+    qs.sort((a, b) => b.dup - a.dup || b.lk - a.lk || a.i - b.i);
     return `<div class="op-card"><p>팔로워 질문 ${q.total.toLocaleString()}개 중 <b style="display:inline">${q.unanswered.toLocaleString()}개(${pct(q.unanswered, q.total)}%)</b>에 댓글 답글이 달리지 않았어요. DM이나 스토리로 답했을 수도 있어요.</p></div>` +
-      (q.examples || []).map(e => `<div class="op-card"><div class="op-head"><b style="font-weight:500">${escRaw(e.q)}</b><span>${escRaw(e.d)}</span></div>${e.url ? `<a class="src2" href="${escRaw(e.url)}" target="_blank" rel="noopener">${escRaw(e.post || "게시물 보기")} ↗</a>` : ""}</div>`).join("");
+      (qs.length ? `<p style="margin:2px 2px 8px;font-size:12px;color:var(--muted)">위에서부터 많이 묻거나 좋아요가 많은 질문 순서예요</p>` : "") +
+      qs.map(({e, dup}) => `<div class="op-card"><div class="op-head"><b style="font-weight:500">${escRaw(e.q)}</b><span>${escRaw(e.d)}</span></div>${dup >= 2 ? `<span style="display:inline-block;margin:6px 6px 0 0;padding:2px 8px;border-radius:999px;background:var(--surface-2);font-size:11.5px;font-weight:600;color:var(--muted)">비슷한 질문 ${dup}개</span>` : ""}${e.url ? `<a class="src2" href="${escRaw(e.url)}" target="_blank" rel="noopener">${escRaw(e.post || "게시물 보기")} ↗</a>` : ""}</div>`).join("");
   })();
   const total = MOOD.reduce((n, m) => n + m.v, 0);
   const maxF = O.flavors ? Math.max(...O.flavors.v.map(x => x[1])) : 1;
@@ -1795,7 +1805,17 @@ function renderOpinion() {
   const chBody = (ch.new || []).length || (ch.deeper || []).length
     ? (ch.new || []).map(x => chItem(x, "NEW")).join("") + (ch.deeper || []).map(x => chItem(x, "심화")).join("")
     : `<div class="op-card"><p style="color:var(--muted);font-size:13px">${ch.since ? "지난 정리와 비교해 새로 생기거나 짙어진 여론은 없었어요." : "다음 달 초 업데이트부터 지난 정리와 비교해 새로 생기거나 더 짙어진 여론을 여기에 따로 보여드려요."}</p></div>`;
-  const kinds = ["전체", ...new Set(O.posts.map(p => p.kind))];
+  // 게시물별 댓글 요약은 최근 한 달(정리 기준일 to/at 에서 30일 전까지) 게시물만 보여 줌. p.d 는 'MM/DD'(연도 없음)
+  const opEnd = /^\d{4}-\d{2}-\d{2}/.test(O.to || "") ? parse(O.to.slice(0, 10)) : /^\d{4}-\d{2}-\d{2}/.test(O.at || "") ? parse(O.at.slice(0, 10)) : new Date();
+  const opStart = new Date(opEnd); opStart.setDate(opEnd.getDate() - 30);
+  const postDay = s => {
+    const m = String(s || "").match(/(?:(\d{4})[-./])?(\d{1,2})[-./](\d{1,2})/); if (!m) return null;
+    const d = new Date(m[1] ? +m[1] : opEnd.getFullYear(), +m[2] - 1, +m[3]);
+    if (!m[1] && d - opEnd > 60 * 864e5) d.setFullYear(d.getFullYear() - 1);   // 연도가 없으면 기준일보다 한참 뒤인 날짜는 작년 것
+    return d;
+  };
+  const RP = O.posts.filter(p => { const d = postDay(p.d); return !d || d >= opStart; });
+  const kinds = ["전체", ...new Set(RP.map(p => p.kind))];
   $("#op-scroll").innerHTML = `
     <p class="op-upd">최근 업데이트 ${ymd(O.at)} · 매월 초에 업데이트돼요</p>
     <div class="hero" style="--c:var(--accent)"><span class="swatch"></span>
@@ -1816,10 +1836,10 @@ function renderOpinion() {
     ${!O.who.length ? "" : sec("👥 어떤 팔로워인가요", "댓글에 직접 밝힌 상황 기준", `<div class="op-card"><ul class="op-who">${O.who.map(w => `<li>${escRaw(w)}</li>`).join("")}</ul></div>`)}
     ${!O.flavors ? "" : sec((O.flavors.icon || "📊") + " " + escRaw(O.flavors.h || "선호 조사"), escRaw(O.flavors.t), `<div class="op-card"><div class="op-bars">${O.flavors.v.map(([k, v]) => `<div><span>${escRaw(k)}</span><span class="b" style="width:${v / maxF * 100}%"></span><em>${v}</em></div>`).join("")}</div><p style="margin-top:10px;font-size:13px;color:var(--muted)">${escRaw(O.flavors.d)}</p></div>`)}
     ${!O.ideas.length ? "" : sec("💡 일상 콘텐츠 힌트", "댓글 반응에서 나온 기획 방향", `<ol class="op-hl">${O.ideas.map(h => `<li>${escRaw(h)}</li>`).join("")}</ol>`)}
-    ${!O.posts.length ? "" : sec("🗂 게시물별 댓글 요약", `게시물 ${O.count}개 · 눌러서 펼쳐 보세요`, `<div class="op-chips" role="group" aria-label="게시물 종류">${kinds.map(k => `<button type="button" data-k="${escRaw(k)}" aria-pressed="${k === opFilter}">${escRaw(k)}${k === "전체" ? "" : ` ${O.posts.filter(p => p.kind === k).length}`}</button>`).join("")}</div><div id="op-posts"></div>`)}`;
+    ${!RP.length ? "" : sec("🗂 게시물별 댓글 요약", `최근 한 달 게시물 ${RP.length}개 · 눌러서 펼쳐 보세요`, `<div class="op-chips" role="group" aria-label="게시물 종류">${kinds.map(k => `<button type="button" data-k="${escRaw(k)}" aria-pressed="${k === opFilter}">${escRaw(k)}${k === "전체" ? "" : ` ${RP.filter(p => p.kind === k).length}`}</button>`).join("")}</div><div id="op-posts"></div>`)}`;
   const list = () => {
     if (!$("#op-posts")) return;
-    const ps = O.posts.filter(p => opFilter === "전체" || p.kind === opFilter).slice().reverse();
+    const ps = RP.filter(p => opFilter === "전체" || p.kind === opFilter).slice().reverse();
     $("#op-posts").innerHTML = ps.map(p => `<details class="op-post"><summary><span class="dt">${escRaw(p.d)}</span><span class="tt">${escRaw(p.t)}</span><span class="nn">💬 ${p.n}</span></summary>
       <div class="bd"><div class="meta"><span class="pill ghost">${escRaw(p.kind)}</span><span class="pill line">${escRaw(p.type)}</span><span class="pill line">읽은 댓글 ${p.n}개${p.total > p.n ? ` / 전체 ${p.total.toLocaleString()}개` : ""}</span></div>${escRaw(p.s)}<br><a href="https://www.instagram.com/p/${encodeURIComponent(p.code)}/" target="_blank" rel="noopener">게시물 보기 ↗</a></div></details>`).join("");
   };
