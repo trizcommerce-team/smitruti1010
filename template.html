@@ -926,10 +926,10 @@ function ideaScore(it, ctx) {
   let s = it.w;
   const pm = prefMult(it);
   s *= pm;
-  if (pm >= 1.4) why.push("좋아요한 기획과 비슷");
+  // 추천 이유에는 '좋아요한 기획과 비슷'·평일/주말을 쓰지 않음(점수에만 반영) — 재열님 2026-11-16
   if (it.months) { s += 2; why.push(`${ctx.month}월 시즌`); }
   const w = it.when || [];
-  if (w.includes(ctx.weekend ? "weekend" : "weekday")) { s += 1.5; why.push(ctx.weekend ? "주말" : "평일"); }
+  if (w.includes(ctx.weekend ? "weekend" : "weekday")) { s += 1.5; }
   else if (w.length) { if (it.w === 1) return [0]; s *= 0.25; } // 조합 주제는 요일이 안 맞으면 빼기
   if (ctx.busy && (it.f === "스토리")) { s += 1.5; why.push("가볍게 올리기 좋음"); }
   else if (ctx.busy && it.f === "라방") s *= 0.3;
@@ -985,7 +985,6 @@ function ideasHTML() {
   ideaShown = picks;
   return `<div class="up-head idea-head"><span>💡 일상 콘텐츠 추천</span><button type="button" class="today-btn" id="idea-more">다른 주제</button></div>
     ${ideaIntro()}
-    <div class="idea-ctx">${esc(ctx.line)}</div>
     <div class="list">${picks.map((it, i) => {
       const ref = it.ref && IDEAS.refs[it.ref];
       const meta = [it.f, `🎯 ${it.kpi}`, ...it.why];
