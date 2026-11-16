@@ -1281,7 +1281,7 @@ function openHelp() { // 캘린더마다 있는 기능만 골라서 설명
     ${OPINION ? sec("💬 댓글 여론", [
       `화면 아래 <b>댓글 여론</b> 메뉴에서 최근 게시물에 달린 팔로워 댓글을 한눈에 정리해 볼 수 있어요.`,
       `<b>한눈에 보기 · 주의 신호 · 좋아하는 점 · 자주 묻는 질문 · 요청</b> 순서로 보여드려요.`,
-      `<b>매월 초</b>에 새로 정리되고, 지난 정리와 비교해 새로 생기거나 더 짙어진 여론은 맨 위 <b>🆕 지난달 대비 달라진 여론</b>에 따로 표시돼요.`,
+      `<b>매주</b> 새로 정리되고, 지난 정리와 비교해 새로 생기거나 더 짙어진 여론은 맨 위 <b>🆕 지난 기간 대비 달라진 여론</b>에 따로 표시돼요.`,
       `맨 아래 <b>게시물별 댓글 요약</b>에서 최근 한 달 게시물을 일상 · 레시피 · 공구 · 이벤트별로 골라 보고, 눌러서 펼치면 그 게시물 댓글 요약과 원본 게시물 링크가 나와요.`
     ]) : ""}
     ${sec("🔔 휴대폰 알림 받기", [
@@ -1809,7 +1809,7 @@ function renderOpinion() {
   const ch = O.changes || {}, chItem = (x, tag) => `<div class="op-card"><div class="op-head"><b>${escRaw(x.t)}</b><span class="op-tag ${tag === "NEW" ? "new" : "up"}">${tag}</span></div><p>${escRaw(x.d)}</p>${x.src ? `<span class="src2">근거: ${escRaw(x.src)}</span>` : ""}</div>`;
   const chBody = (ch.new || []).length || (ch.deeper || []).length
     ? (ch.new || []).map(x => chItem(x, "NEW")).join("") + (ch.deeper || []).map(x => chItem(x, "심화")).join("")
-    : `<div class="op-card"><p style="color:var(--muted);font-size:13px">${ch.since ? "지난 정리와 비교해 새로 생기거나 짙어진 여론은 없었어요." : "다음 달 초 업데이트부터 지난 정리와 비교해 새로 생기거나 더 짙어진 여론을 여기에 따로 보여드려요."}</p></div>`;
+    : `<div class="op-card"><p style="color:var(--muted);font-size:13px">${ch.since ? "지난 정리와 비교해 새로 생기거나 짙어진 여론은 없었어요." : "다음 업데이트부터 지난 정리와 비교해 새로 생기거나 더 짙어진 여론을 여기에 따로 보여드려요."}</p></div>`;
   // 게시물별 댓글 요약은 최근 한 달(정리 기준일 to/at 에서 30일 전까지) 게시물만 보여 줌. p.d 는 'MM/DD'(연도 없음)
   const opEnd = /^\d{4}-\d{2}-\d{2}/.test(O.to || "") ? parse(O.to.slice(0, 10)) : /^\d{4}-\d{2}-\d{2}/.test(O.at || "") ? parse(O.at.slice(0, 10)) : new Date();
   const opStart = new Date(opEnd); opStart.setDate(opEnd.getDate() - 30);
@@ -1822,7 +1822,7 @@ function renderOpinion() {
   const RP = O.posts.filter(p => { const d = postDay(p.d); return !d || d >= opStart; });
   const kinds = ["전체", ...new Set(RP.map(p => p.kind))];
   $("#op-scroll").innerHTML = `
-    <p class="op-upd">최근 업데이트 ${ymd(O.at)} · 매월 초에 업데이트돼요</p>
+    <p class="op-upd">최근 업데이트 ${ymd(O.at)} · 매주 업데이트돼요</p>
     <div class="hero" style="--c:var(--accent)"><span class="swatch"></span>
       <h2>팔로워는 이렇게 말해요</h2>
       <div class="full">${md(O.from)}~${md(O.to)} 게시물 ${O.count}개 · 팔로워 댓글 ${O.read.toLocaleString()}개를 직접 읽고 정리했어요</div>
