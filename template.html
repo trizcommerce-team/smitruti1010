@@ -539,6 +539,10 @@ const DATA = /*__DATA__*/null;
 const IDEAS = /*__IDEAS__*/null;
 const OPINION = /*__OPINION__*/null; // 최근 3개월 댓글 여론 (opinion.json 이 있는 앱만) // 일상 콘텐츠 추천 (ideas.json 이 있는 앱만)
 const IS_ADMIN = !!window.__ADM; // admin(관리자) 화면에서만 true — 셀러 사이트에는 없음
+// 일상 추천 평가 버튼: admin 에는 늘, 셀러 화면에는 ideas.json 의 votes.seller 가 true 인 셀러만. 아래 버튼 글자도 셀러별로
+const VOTE_ON = IS_ADMIN || !!(IDEAS && IDEAS.votes && IDEAS.votes.seller);
+const VOTE_DOWN = (IDEAS && IDEAS.votes && IDEAS.votes.down) || "별로예요";
+const VOTE_DOWN_ICON = (IDEAS && IDEAS.votes && IDEAS.votes.downIcon) || "👎";
 const SRC = {trend: ["🔥", "유행"], search: ["🔎", "검색량"], fan: ["💬", "팔로워 관심"], perf: ["📈", "성과 검증"], season: ["🍂", "시즌"]};
 const srcChips = it => (it.src || []).map(k => SRC[k] ? `<span class="src ${k}">${SRC[k][0]} ${SRC[k][1]}</span>` : "").join("");
 const $ = s => document.querySelector(s);
@@ -989,16 +993,16 @@ function ideasHTML() {
       const ref = it.ref && IDEAS.refs[it.ref];
       const meta = [it.f, `🎯 ${it.kpi}`, ...it.why];
       const v = ideaVotes[it.t]?.v || 0;
-      return `<div class="idea-card${IS_ADMIN ? " has-votes" : ""}"><button type="button" class="entry idea" data-idea="${i}">
+      return `<div class="idea-card${VOTE_ON ? " has-votes" : ""}"><button type="button" class="entry idea" data-idea="${i}">
       <span class="fmt idea-g ${it.g}">${esc(IDEAS.short[it.g])}</span>
       <span class="e-body">${it.src?.length ? `<span class="srcs">${srcChips(it)}</span>` : ""}<span class="e-title">${esc(it.t)}</span><span class="e-prev">${esc(it.hooks ? it.hooks[0] : ref ? ref.point : it.whyText)}</span>
       ${it.make?.length ? `<span class="e-make">🍳 만들어보기: ${esc(it.make.slice(0, 2).join(", "))}</span>` : it.examples?.length ? `<span class="e-make">📌 예시: ${esc(it.examples.slice(0, 2).join(", "))}</span>` : ""}
       <span class="e-meta">${meta.map(w => `<span>${esc(w)}</span>`).join("")}</span></span>
       <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
-      ${IS_ADMIN ? voteBtns(i, v) : ""}</div>`;
+      ${VOTE_ON ? voteBtns(i, v) : ""}</div>`;
     }).join("")}</div>`;
 }
-const voteBtns = (i, v) => `<div class="votes"><button type="button" class="vote up${v > 0 ? " on" : ""}" data-vote="${i}" data-v="1" aria-pressed="${v > 0}" aria-label="좋아요">👍 좋아요</button><button type="button" class="vote down${v < 0 ? " on" : ""}" data-vote="${i}" data-v="-1" aria-pressed="${v < 0}" aria-label="싫어요">👎 별로예요</button></div>`;
+const voteBtns = (i, v) => `<div class="votes"><button type="button" class="vote up${v > 0 ? " on" : ""}" data-vote="${i}" data-v="1" aria-pressed="${v > 0}" aria-label="좋아요">👍 좋아요</button><button type="button" class="vote down${v < 0 ? " on" : ""}" data-vote="${i}" data-v="-1" aria-pressed="${v < 0}" aria-label="${VOTE_DOWN}">${VOTE_DOWN_ICON} ${VOTE_DOWN}</button></div>`;
 function voteIdea(i, val) { // 같은 버튼을 다시 누르면 취소
   const it = ideaShown[i]; if (!it) return;
   const prev = ideaVotes[it.t]?.v || 0, v = prev === val ? 0 : val;
@@ -1065,7 +1069,7 @@ function openIdea(it) {
     (ref ? field("참고한 게시물", `<a href="${safeUrl(ref.url)}" target="_blank" rel="noopener">${esc(ref.label)}</a>\n${esc(ref.stat)}\n${esc(ref.point)}`) : "") +
     (Array.isArray(it.why) && it.why.length ? field("오늘 추천한 이유", esc(it.why.join(" · "))) : "") +
     `<div class="cap-tools"><button type="button" class="cap-btn" id="idea-copy">기획 메모 복사</button></div>` +
-    (IS_ADMIN && ideaShown.includes(it) ? `<div class="sheet-votes">${voteBtns(ideaShown.indexOf(it), ideaVotes[it.t]?.v || 0)}</div>` : ""));
+    (VOTE_ON && ideaShown.includes(it) ? `<div class="sheet-votes">${voteBtns(ideaShown.indexOf(it), ideaVotes[it.t]?.v || 0)}</div>` : ""));
   $("#idea-copy").onclick = () => copyText(lines.join("\n\n"));
   document.querySelectorAll(".sheet-votes .vote").forEach(b => b.onclick = () => { closeSheet(); voteIdea(+b.dataset.vote, +b.dataset.v); });
 }
@@ -1274,8 +1278,8 @@ function openHelp() { // 캘린더마다 있는 기능만 골라서 설명
       hasEx ? `<b>📌 예시</b>에는 바로 활용할 수 있는 구체적인 메뉴·장소·소재가 담겨 있어요.` : "",
       `주제를 누르면 <b>기획 의도 · 타깃 · 후킹 문구 · 컷 구성 · 촬영 가이드 · 스토리 연계 · 행동 유도 문구</b>까지 담긴 기획서가 열려요. ${k("기획 메모 복사")}로 메모장에 옮겨 두실 수 있어요.`,
       `다른 아이디어를 보고 싶으면 ${k("다른 주제")}를 눌러 주세요. 지금 보이는 것과 겹치지 않는 다른 8개를 보여 드려요.`,
-      IS_ADMIN ? `마음에 들면 <b>👍 좋아요</b>, 별로면 <b>👎 별로예요</b>를 눌러 주세요. 좋아요한 것과 비슷한 주제는 더, 별로예요한 것은 덜 추천해 드려요. 같은 버튼을 한 번 더 누르면 취소돼요.` : "",
-      IS_ADMIN ? `아무것도 안 누르고 넘겨도 괜찮아요. ‘무난했다’로 보고 나중에 다시 추천해 드려요.` : ""
+      VOTE_ON ? `마음에 들면 <b>👍 좋아요</b>, ${VOTE_DOWN === "별로예요" ? "별로면" : "하기 어려우면"} <b>${VOTE_DOWN_ICON} ${VOTE_DOWN}</b>를 눌러 주세요. 좋아요를 누른 것과 비슷한 주제는 더, ${VOTE_DOWN}를 누른 것은 덜 추천해 드려요. 같은 버튼을 한 번 더 누르면 취소돼요.` : "",
+      VOTE_ON ? `아무것도 안 누르고 넘겨도 괜찮아요. ‘무난했다’로 보고 나중에 다시 추천해 드려요.` : ""
     ].filter(Boolean)) : ""}
     ${OPINION ? sec("💬 댓글 여론", (() => {
       // 이 캘린더의 댓글 여론 탭에 실제로 들어 있는 섹션만, 탭과 같은 순서로 설명 (admin 에서 최종 연동한 항목만 셀러 캘린더에 있음)
