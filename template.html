@@ -330,6 +330,26 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 .op-sec>h3 small{display:block;font-family:inherit;font-size:12px;font-weight:500;color:var(--muted);margin-top:3px}
 .op-card{background:var(--surface);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
 .op-card+.op-card{margin-top:10px}
+.share-list{background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:6px 14px}
+.share-row{display:grid;grid-template-columns:5.6em auto 1fr;gap:8px;align-items:center;padding:10px 0;font-size:13.5px;border-bottom:1px solid var(--line)}
+.share-row:last-child{border-bottom:0}
+.share-row b{font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
+.share-row .sr-who{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);white-space:nowrap}
+.share-row .sr-who.triz{background:var(--surface-2);color:var(--muted)}
+.qa-facts dd{word-break:break-all}
+.qa-group{margin-top:12px}
+.qa-group h4{font-size:13.5px;color:var(--muted);margin:16px 4px 8px;display:flex;gap:6px;align-items:center}
+.qa-group h4 small{font-size:11.5px;background:var(--surface-2);border-radius:999px;padding:1px 7px}
+details.qa{background:var(--surface);border-radius:14px;box-shadow:var(--shadow);margin-top:8px}
+details.qa summary{list-style:none;display:flex;gap:10px;align-items:flex-start;padding:13px 14px;cursor:pointer;font-weight:600;font-size:14.5px;line-height:1.45}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::after{content:"";flex:none;width:8px;height:8px;margin:6px 2px 0 auto;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .2s}
+details.qa[open] summary::after{transform:rotate(-135deg);margin-top:9px}
+.qa-q,.qa-badge{flex:none;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:12px;font-weight:800}
+.qa-q{background:var(--accent);color:var(--accent-ink,#fff)}
+.qa-badge{background:var(--surface-2);color:var(--muted)}
+.qa-a{display:flex;gap:10px;padding:0 14px 14px;font-size:13.5px;line-height:1.65;color:var(--ink)}
+.qa-a a{word-break:break-all}
 .op-card b{display:block;font-size:15px;font-weight:600;margin-bottom:4px;word-break:keep-all}
 .op-card p{margin:0;font-size:14px;line-height:1.65;word-break:keep-all;color:var(--ink)}
 .op-card .src2{display:block;margin-top:6px;font-size:11.5px;color:var(--muted)}
@@ -471,6 +491,11 @@ details.fold,.op-card,.op-post,.op-hl li{border-radius:18px}
     <div class="pager" id="prod-pager"></div>
   </section>
 
+  <section class="view" id="v-info" aria-label="상품 정보" hidden>
+    <div class="topbar"><div><div class="eyebrow">공구 상품</div><div class="h-title">상품 정보</div></div><button class="icon-btn help-btn" type="button" aria-label="사용 설명서"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 17.2h.01"/></svg></button></div>
+    <div class="scroll" id="info-scroll"></div>
+  </section>
+
   <section class="view" id="v-month" aria-label="월별" hidden>
     <div class="topbar"><div><div class="eyebrow">월간 콘텐츠 캘린더</div><div class="h-title">월별</div></div><button class="icon-btn help-btn" type="button" aria-label="사용 설명서"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 17.2h.01"/></svg></button></div>
     <div class="tabs" id="month-tabs" role="tablist"></div>
@@ -490,6 +515,7 @@ details.fold,.op-card,.op-post,.op-hl li{border-radius:18px}
   <nav class="nav" aria-label="메뉴">
     <button type="button" data-view="v-cal" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>캘린더</button>
     <button type="button" data-view="v-prod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg>제품별</button>
+    <button type="button" data-view="v-info" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>상품 정보</button>
     <button type="button" data-view="v-month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>월별</button>
     <button type="button" data-view="v-idea" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg>일상 추천</button>
     <button type="button" data-view="v-op" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5h16v10H9.5L5.5 19v-3.5H4z"/><path d="M8 9.5h8M8 12.5h5" stroke-linecap="round"/></svg>댓글 여론</button>
@@ -1676,10 +1702,18 @@ function statusOf(p) {
   if (TODAY <= p.period[1]) return `<span class="status live">공구 진행 중</span>`;
   return `<span class="status done">종료</span>`;
 }
+const SALE_INFO = /^(판매 구성|배송)$/;   // 상품 정보 탭으로 옮기는 항목 (Q&A 있는 새 양식 시트만)
+const QA_P = DATA.products.find(p => p.qa);
+function shareHTML(rows) {
+  if (!rows || !rows.length) return "";
+  return `<div class="sec-h"><h3>초안 공유 일정</h3><small>${rows.length}건</small></div>
+    <div class="share-list">${rows.map(r => `<div class="share-row"><b>${esc(r.d)}</b><span class="sr-who${/트리즈/.test(r.who) ? " triz" : ""}">${esc(r.who || "")}</span><span class="what">${esc(r.what)}</span></div>`).join("")}</div>`;
+}
 function productPage(p) {
   const pi = DATA.products.indexOf(p);
-  const tops = p.info.filter(x => x.top != null).sort((a, b) => a.top - b.top); // 공구 제품 → 공구 일정 → 이벤트 → 상단 배치 표시
-  const rest = p.info.filter(x => x.top == null);
+  const pinfo = p.qa ? p.info.filter(x => !SALE_INFO.test(x.label)) : p.info;
+  const tops = pinfo.filter(x => x.top != null).sort((a, b) => a.top - b.top); // 공구 제품 → 공구 일정 → 이벤트 → 상단 배치 표시
+  const rest = pinfo.filter(x => x.top == null);
   const short = rest.filter(x => plain(x.text).length < 260 && !/소구점|키워드/.test(x.label));
   const long = rest.filter(x => !short.includes(x) && x.label !== "공구상품");
   const kv = [...tops, ...short.filter(x => x.label !== "공구상품")].map(x => `<dt>${esc(x.label)}</dt><dd>${rich(x.text)}</dd>`).join("");
@@ -1706,7 +1740,26 @@ function productPage(p) {
       <dl class="kv">${kv}</dl>${gallery(p.images)}</div>
     ${long.map(x => `<details class="fold"><summary>${esc(x.label.length > 24 ? "참고" : x.label)}</summary><div class="fold-body">${rich(x.label.length > 24 ? x.label + "\n" + x.text : x.text)}</div></details>`).join("")}
     <div class="sec-h"><h3>업로드 타임라인</h3><small>피드 ${reels} · 스토리 ${stories}</small></div>
-    <div class="tl" data-pid="${p.id}">${tl}</div>`;
+    <div class="tl" data-pid="${p.id}">${tl}</div>${p.qa ? shareHTML(p.share) : ""}`;
+}
+let infoDone = false;
+function renderInfo() {   // 상품 정보 탭
+  if (!QA_P || infoDone) return; infoDone = true;
+  const p = QA_P, qa = p.qa;
+  const kv = p.info.filter(x => SALE_INFO.test(x.label)).map(x => `<dt>${esc(x.label)}</dt><dd>${rich(x.text)}</dd>`).join("");
+  const facts = qa.facts.map(x => `<dt>${esc(x.label)}</dt><dd>${/^https?:\/\//.test(x.text) ? `<a href="${esc(x.text)}" target="_blank" rel="noopener">열어 보기 ↗</a>` : rich(x.text)}</dd>`).join("");
+  const secs = [];
+  qa.qna.forEach(x => { const s = secs.find(g => g.sec === x.sec); s ? s.items.push(x) : secs.push({sec: x.sec, items: [x]}); });
+  const qaHTML = secs.map(g => `<div class="qa-group"><h4>${esc(g.sec || "질문")}<small>${g.items.length}</small></h4>
+      ${g.items.map(x => `<details class="qa"><summary><span class="qa-q">Q</span><span class="qa-t">${esc(x.q)}</span></summary>
+        <div class="qa-a"><span class="qa-badge">A</span><div>${rich(x.a).replace(/\n\s*\n/g, "<br><br>").replace(/\n(?=\s*[*•·\-①-⑳\d])/g, "<br>").replace(/\n/g, " ")}</div></div></details>`).join("")}</div>`).join("");
+  $("#info-scroll").innerHTML = `
+    <div class="hero" style="--c:${p.color}"><span class="swatch"></span>
+      <h2>${esc(p.name)}</h2><dl class="kv">${kv}</dl></div>
+    <div class="sec-h"><h3>상품 정보</h3></div>
+    <div class="op-card"><dl class="kv qa-facts">${facts}</dl></div>
+    <div class="sec-h"><h3>자주 묻는 질문</h3><small>${qa.qna.length}개 · 눌러서 답 보기</small></div>
+    ${qaHTML}`;
 }
 const prodPager = makePager($("#prod-tabs"), $("#prod-pager"), DATA.products,
   p => `<i class="dotc" style="--c:${p.color}"></i>${esc(p.name)}${p.round && DATA.products.filter(x => x.name === p.name).length > 1 ? " " + esc(p.round) : ""}`,
@@ -1763,6 +1816,11 @@ function monthPage(m) {
 }
 if (!DATA.months.length) document.querySelector('.nav [data-view="v-month"]').hidden = true;
 if (OPINION) document.querySelector('.nav [data-view="v-op"]').hidden = false;
+if (QA_P) {   // 새 양식 시트: '제품별' → '콘텐츠 가이드', '상품 정보' 탭 보이기
+  const pb = document.querySelector('.nav [data-view="v-prod"]'); pb.lastChild.textContent = "콘텐츠 가이드";
+  document.querySelector("#v-prod .h-title").textContent = "콘텐츠 가이드";
+  document.querySelector('.nav [data-view="v-info"]').hidden = false;
+}
 if (IDEAS) document.querySelector('.nav [data-view="v-idea"]').hidden = false;
 document.querySelector(".nav").style.gridTemplateColumns = `repeat(${document.querySelectorAll(".nav button:not([hidden])").length},1fr)`;
 const monthPager = makePager($("#month-tabs"), $("#month-pager"), DATA.months, m => esc(m.name), monthPage, "monthIdx");
@@ -1886,12 +1944,13 @@ function renderOpinion() {
 }
 
 /* ---------------- views ---------------- */
-const VIEWS = {"v-cal": "calendar", "v-prod": "products", "v-month": "months", "v-op": "opinion", "v-idea": "ideas"};
+const VIEWS = {"v-cal": "calendar", "v-prod": "products", "v-info": "info", "v-month": "months", "v-op": "opinion", "v-idea": "ideas"};
 function showView(id) {
   document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== id);
   document.querySelectorAll(".nav button").forEach(b => b.dataset.view === id ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   store.set("view", id);
   if (id === "v-prod") prodPager.go(prodPager.idx, false);
+  if (id === "v-info") renderInfo();
   if (id === "v-month") monthPager.go(monthPager.idx, false);
   if (id === "v-op") renderOpinion();
   if (id === "v-idea") renderIdeas();
@@ -1936,5 +1995,5 @@ prodPager.init(+(store.get("prodIdx") ?? defaultProd) || 0);
 monthPager.init(+(store.get("monthIdx") ?? 0) || 0);
 const hashView = Object.entries(VIEWS).find(([, h]) => location.hash === "#" + h)?.[0];
 const wanted = hashView || store.get("view") || "v-cal";
-showView((wanted === "v-month" && !DATA.months.length) || (wanted === "v-op" && !OPINION) || (wanted === "v-idea" && !IDEAS) ? "v-cal" : wanted);
+showView((wanted === "v-month" && !DATA.months.length) || (wanted === "v-op" && !OPINION) || (wanted === "v-info" && !QA_P) || (wanted === "v-idea" && !IDEAS) ? "v-cal" : wanted);
 </script>
