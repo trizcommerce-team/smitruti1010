@@ -1792,7 +1792,7 @@ const OP_LV = {"높음": "high", "중간": "mid", "낮음": "low"};
 function renderOpinion() {
   if (!OPINION || opDone) return; opDone = true;
   { const eb = document.querySelector("#v-op .eyebrow"), md0 = s => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
-    if (eb && OPINION.from && OPINION.to) eb.textContent = `최근 팔로워 댓글 · ${md0(OPINION.from)}~${md0(OPINION.to)} 게시물`; }
+    if (eb && OPINION.from && OPINION.to) eb.textContent = `최근 팔로워 댓글 · ${md0(OPINION.from)}~${md0(OPINION.to)} 게시물 댓글`; }
   const O = {headline: [], mood: [], loves: [], asks: [], wants: [], warns: [], kinds: [], who: [], ideas: [], posts: [], ...OPINION}, md = s => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
   const sec = (title, sub, body) => `<section class="op-sec"><h3>${title}${sub ? `<small>${sub}</small>` : ""}</h3>${body}</section>`;
   const card = (t, d, extra = "") => `<div class="op-card"><b>${escRaw(t)}</b><p>${escRaw(d)}</p>${extra}</div>`;
@@ -1845,12 +1845,15 @@ function renderOpinion() {
     return d;
   };
   const RP = O.posts.filter(p => { const d = postDay(p.d); return !d || d >= opStart; });
+  const md2 = d => `${d.getMonth() + 1}/${d.getDate()}`;
+  const rpDays = RP.map(p => postDay(p.d)).filter(Boolean).sort((a, b) => a - b);
+  const opRange = rpDays.length ? `${md2(rpDays[0])}~${md2(rpDays[rpDays.length - 1])}` : "최근 한 달";   // 지금 보이는 게시물 요약의 실제 기간
   const kinds = ["전체", ...new Set(RP.map(p => p.kind))];
   $("#op-scroll").innerHTML = `
     <p class="op-upd">최근 업데이트 ${ymd(O.at)} · 매주 업데이트돼요</p>
     <div class="hero" style="--c:var(--accent)"><span class="swatch"></span>
       <h2>팔로워는 이렇게 말해요</h2>
-      <div class="full">${md(O.from)}~${md(O.to)} 게시물 ${O.count}개 · 팔로워 댓글 ${O.read.toLocaleString()}개를 직접 읽고 정리했어요</div>
+      <div class="full">${md(O.from)}~${md(O.to)} 게시물에 달린 팔로워 댓글을 읽고 정리한 여론이에요 · ${md(O.at)} 기준</div>
       <p class="idea-intro" style="margin-top:8px">${escRaw(O.note)} ${md(O.at)} 정리.</p></div>
     ${!O.changes ? "" : sec("🆕 지난 기간 대비 달라진 여론", ch.since ? `${md(ch.since)} 정리와 비교해 새로 보이거나 더 짙어진 여론이에요` : "", chBody)}
     ${!O.headline.length ? "" : sec("한눈에 보기", "", `<ol class="op-hl">${O.headline.map(h => `<li>${escRaw(h)}</li>`).join("")}</ol>`)}
@@ -1866,7 +1869,7 @@ function renderOpinion() {
     ${!O.who.length ? "" : sec("👥 어떤 팔로워인가요", "댓글에 직접 밝힌 상황 기준", `<div class="op-card"><ul class="op-who">${O.who.map(w => `<li>${escRaw(w)}</li>`).join("")}</ul></div>`)}
     ${!O.flavors ? "" : sec((O.flavors.icon || "📊") + " " + escRaw(O.flavors.h || "선호 조사"), escRaw(O.flavors.t), `<div class="op-card"><div class="op-bars">${O.flavors.v.map(([k, v]) => `<div><span>${escRaw(k)}</span><span class="b" style="width:${v / maxF * 100}%"></span><em>${v}</em></div>`).join("")}</div><p style="margin-top:10px;font-size:13px;color:var(--muted)">${escRaw(O.flavors.d)}</p></div>`)}
     ${!O.ideas.length ? "" : sec("💡 일상 콘텐츠 힌트", "댓글 반응에서 나온 기획 방향", `<ol class="op-hl">${O.ideas.map(h => `<li>${escRaw(h)}</li>`).join("")}</ol>`)}
-    ${!RP.length ? "" : sec("🗂 게시물별 댓글 요약", `최근 한 달 게시물 ${RP.length}개 · 눌러서 펼쳐 보세요`, `<div class="op-chips" role="group" aria-label="게시물 종류">${kinds.map(k => `<button type="button" data-k="${escRaw(k)}" aria-pressed="${k === opFilter}">${escRaw(k)}${k === "전체" ? "" : ` ${RP.filter(p => p.kind === k).length}`}</button>`).join("")}</div><div id="op-posts"></div>`)}`;
+    ${!RP.length ? "" : sec("🗂 게시물별 댓글 요약", `${opRange} 게시물 ${RP.length}개 · 눌러서 펼쳐 보세요`, `<div class="op-chips" role="group" aria-label="게시물 종류">${kinds.map(k => `<button type="button" data-k="${escRaw(k)}" aria-pressed="${k === opFilter}">${escRaw(k)}${k === "전체" ? "" : ` ${RP.filter(p => p.kind === k).length}`}</button>`).join("")}</div><div id="op-posts"></div>`)}`;
   const list = () => {
     if (!$("#op-posts")) return;
     const ps = RP.filter(p => opFilter === "전체" || p.kind === opFilter).slice().reverse();
