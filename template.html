@@ -337,6 +337,23 @@ details.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
 .share-row .sr-who{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);white-space:nowrap}
 .share-row .sr-who.triz{background:var(--surface-2);color:var(--muted)}
 .qa-facts dd{word-break:break-all}
+.sale-h{margin:16px 0 8px;font-size:13px;font-weight:700;color:var(--muted)}
+.sale-t{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+.sale-t th{font-size:11.5px;font-weight:600;color:var(--muted);text-align:left;padding:0 6px 6px;border-bottom:1px solid var(--line)}
+.sale-t td{padding:9px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.sale-t tr:last-child td{border-bottom:0}
+.sale-t th:nth-child(3),.sale-t td:nth-child(3){text-align:right}
+.sale-t .now{font-weight:700;margin-right:6px}
+.sale-t s{color:var(--muted);font-size:12px}
+.sale-t .off{display:inline-block;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font-weight:800;font-size:12px;padding:2px 7px;border-radius:999px}
+.ship{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13.5px;margin:0}
+.ship dt{color:var(--muted);white-space:nowrap}
+.ship dd{margin:0}
+details.ing summary{cursor:pointer;color:var(--accent);font-weight:600;list-style:none}
+details.ing summary::-webkit-details-marker{display:none}
+details.ing summary::after{content:" ▾"}
+details.ing[open] summary::after{content:" ▴"}
+details.ing div{margin-top:6px;font-size:12.5px;line-height:1.6;color:var(--ink)}
 .qa-group{margin-top:12px}
 .qa-group h4{font-size:13.5px;color:var(--muted);margin:16px 4px 8px;display:flex;gap:6px;align-items:center}
 .qa-group h4 small{font-size:11.5px;background:var(--surface-2);border-radius:999px;padding:1px 7px}
@@ -1746,8 +1763,25 @@ let infoDone = false;
 function renderInfo() {   // 상품 정보 탭
   if (!QA_P || infoDone) return; infoDone = true;
   const p = QA_P, qa = p.qa;
-  const kv = p.info.filter(x => SALE_INFO.test(x.label)).map(x => `<dt>${esc(x.label)}</dt><dd>${rich(x.text)}</dd>`).join("");
-  const facts = qa.facts.map(x => `<dt>${esc(x.label)}</dt><dd>${/^https?:\/\//.test(x.text) ? `<a href="${esc(x.text)}" target="_blank" rel="noopener">열어 보기 ↗</a>` : rich(x.text)}</dd>`).join("");
+  // 판매 구성: "2EA · 정상가 68,000원 → 공구가 36,000원 (47% 할인)" 줄들 → 표
+  const saleRows = p.info.filter(x => x.label === "판매 구성").flatMap(x => x.text.split("\n")).map(l => {
+    const m = l.match(/^(.+?)\s*·\s*정상가\s*([\d,]+원)\s*→\s*공구가\s*([\d,]+원)(?:\s*\((\d+)%\s*할인\))?/);
+    return m ? {opt: m[1], was: m[2], now: m[3], off: m[4]} : {opt: l};
+  });
+  const saleHTML = !saleRows.length ? "" : `<div class="sale-h">판매 구성</div>
+    <table class="sale-t"><thead><tr><th>구성</th><th>공구가</th><th>할인</th></tr></thead><tbody>
+    ${saleRows.map(r => r.now ? `<tr><td><b>${esc(r.opt)}</b></td><td><span class="now">${esc(r.now)}</span><s>${esc(r.was)}</s></td><td>${r.off ? `<span class="off">${r.off}%</span>` : ""}</td></tr>`
+      : `<tr><td colspan="3">${esc(r.opt)}</td></tr>`).join("")}</tbody></table>`;
+  // 배송: "배송비: 3,000원 (*5만원 이상 구매 시 무료배송)" → 제목 | 내용
+  const shipRows = p.info.filter(x => x.label === "배송").flatMap(x => x.text.split("\n")).filter(Boolean).map(l => {
+    const i = l.indexOf(":"); let k = i > 0 ? l.slice(0, i).trim() : "배송", v = i > 0 ? l.slice(i + 1).trim() : l.trim();
+    v = v.replace(/\(\s*\*?\s*([^)]*)\)/, "· $1").replace(/\s*구매\s*시\s*/, " ").replace(/\s+/g, " ").trim();
+    return {k: k === "배송비" ? "기본 배송비" : k.replace(/\s*\/\s*/g, " · "), v};
+  });
+  const shipHTML = !shipRows.length ? "" : `<div class="sale-h">배송</div><dl class="ship">${shipRows.map(r => `<dt>${esc(r.k)}</dt><dd>${esc(r.v)}</dd>`).join("")}</dl>`;
+  const kv = "";
+  const facts = qa.facts.map(x => `<dt>${esc(x.label)}</dt><dd>${/^https?:\/\//.test(x.text) ? `<a href="${esc(x.text)}" target="_blank" rel="noopener">열어 보기 ↗</a>`
+    : /전성분|성분표/.test(x.label) ? `<details class="ing"><summary>펼쳐 보기</summary><div>${rich(x.text)}</div></details>` : rich(x.text)}</dd>`).join("");
   const secs = [];
   qa.qna.forEach(x => { const s = secs.find(g => g.sec === x.sec); s ? s.items.push(x) : secs.push({sec: x.sec, items: [x]}); });
   const qaHTML = secs.map(g => `<div class="qa-group"><h4>${esc(g.sec || "질문")}<small>${g.items.length}</small></h4>
@@ -1755,7 +1789,7 @@ function renderInfo() {   // 상품 정보 탭
         <div class="qa-a"><span class="qa-badge">A</span><div>${rich(x.a).replace(/\n\s*\n/g, "<br><br>").replace(/\n(?=\s*[*•·\-①-⑳\d])/g, "<br>").replace(/\n/g, " ")}</div></div></details>`).join("")}</div>`).join("");
   $("#info-scroll").innerHTML = `
     <div class="hero" style="--c:${p.color}"><span class="swatch"></span>
-      <h2>${esc(p.name)}</h2><dl class="kv">${kv}</dl></div>
+      <h2>${esc(p.name)}</h2>${saleHTML}${shipHTML}</div>
     <div class="sec-h"><h3>상품 정보</h3></div>
     <div class="op-card"><dl class="kv qa-facts">${facts}</dl></div>
     <div class="sec-h"><h3>자주 묻는 질문</h3><small>${qa.qna.length}개 · 눌러서 답 보기</small></div>
