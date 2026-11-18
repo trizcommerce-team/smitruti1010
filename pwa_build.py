@@ -118,6 +118,34 @@ def icon(size, path):
     im.resize((size, size), Image.LANCZOS).save(path)
 
 
+
+# ---------------------------------------------------------------- 페이지 가리기 (2026-11-18 재열님 요청)
+AI_META = ('<meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex,noai,noimageai">\n'
+           '<meta name="googlebot" content="noindex,nofollow,noarchive,nosnippet">\n')
+
+
+def cloak(html, cut="<style>"):
+    """cut 앞(메타·제목·아이콘)만 그대로 두고, 나머지(디자인·화면·코드·데이터)는 XOR+base64 로 감싸서
+    브라우저에서 열 때만 풀어 document.write 로 그린다. 링크만 읽는 AI·검색 로봇에는 의미 없는 글자만 보인다."""
+    import base64, os
+    i = html.find(cut, max(0, html.find("</title>")))   # 제목 뒤의 첫 <style> 부터 가림
+    if i < 0:
+        return html
+    head, body = html[:i], html[i:]
+    key = os.urandom(16)
+    raw = body.encode("utf-8")
+    enc = base64.b64encode(bytes(b ^ key[n % 16] for n, b in enumerate(raw))).decode()
+    k = base64.b64encode(key).decode()
+    loader = ('<script>(function(){var k=atob("%s"),b=atob("%s"),u=new Uint8Array(b.length);'
+              'for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i)^k.charCodeAt(i%%16);'
+              'document.write(new TextDecoder().decode(u));})();</script>' % (k, enc))
+    if 'name="robots"' in head:
+        head = head.split('<meta name="robots"')[0] + head.split('<meta name="robots"', 1)[1].split(">", 1)[1]
+    j = head.find("\n", head.find('<meta charset="utf-8">'))   # 문서 형식 선언·글자 설정 다음 줄에 AI 차단 표시
+    head = head[:j + 1] + AI_META + head[j + 1:]
+    return head + "<noscript>이 캘린더는 휴대폰 브라우저에서 열어 주세요.</noscript>\n" + loader
+
+
 def main():
     if PWA.exists():
         shutil.rmtree(PWA)
@@ -166,7 +194,7 @@ def main():
     digest = hashlib.sha256((json.dumps(data, ensure_ascii=False, sort_keys=True) + code).encode()).hexdigest()[:16]
     (PWA / "version.txt").write_text(digest, encoding="utf-8")
     # 화면이 자기 버전을 알고 있어야 새 버전이 올라왔는지 비교할 수 있음
-    (PWA / "index.html").write_text(html.replace("__APPVER__", digest), encoding="utf-8")
+    (PWA / "index.html").write_text(cloak(html.replace("__APPVER__", digest)), encoding="utf-8")
     # 아이콘이 바뀌면 주소 끝(?v=)도 바뀌어서, 설치된 앱(안드로이드·PC 크롬)이 새 아이콘을 알아채고 스스로 바꾼다
     iv = hashlib.sha256((PWA / "icon-512.png").read_bytes()).hexdigest()[:8]
     manifest = {
