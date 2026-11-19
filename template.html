@@ -1743,6 +1743,7 @@ function productPage(p) {
   });
   const reels = p.slots.filter(s => ["reel", "post"].includes(fmtOf(s.format))).length;
   const stories = p.slots.filter(s => fmtOf(s.format) === "story").reduce((n, s) => n + Math.max(1, s.items.length), 0);
+  byDay.reverse();   // 원본 시트 날짜 기준 최근 날짜부터
   const tl = byDay.map(g => {
     const d = g.date ? parse(g.date) : null;
     const cls = ["tl-d"]; if (/OPEN/i.test(g.label)) cls.push("open"); if (g.date === TODAY) cls.push("today");
@@ -2026,7 +2027,7 @@ renderCal();
 askViewer();
 const upcoming = DATA.products.filter(p => p.period && p.period[1] >= TODAY).sort((a, b) => a.period[0] < b.period[0] ? -1 : 1)[0];
 const defaultProd = upcoming ? DATA.products.indexOf(upcoming) : 0;
-prodPager.init(+(store.get("prodIdx") ?? defaultProd) || 0);
+prodPager.init(0);   // 제품별 탭은 항상 가장 최근 제품부터
 monthPager.init(+(store.get("monthIdx") ?? 0) || 0);
 const hashView = Object.entries(VIEWS).find(([, h]) => location.hash === "#" + h)?.[0];
 const wanted = hashView || store.get("view") || "v-cal";
