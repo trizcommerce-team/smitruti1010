@@ -1152,7 +1152,7 @@ function renderAgenda() {
       : `<div class="empty">이 날은 시트에 잡힌 콘텐츠가 없어요.</div>`}
     <div class="up-head">${sel === TODAY ? `다가오는 ${UPCOMING}일` : `이후 ${UPCOMING}일`}</div>
     ${soon.length ? soon.join("") : `<div class="empty sm">${UPCOMING}일 안에 잡힌 콘텐츠가 없어요.</div>`}
-    <p class="foot">시트 기준 ${esc(DATA.updated)} 업데이트${IS_ADMIN ? ` · <a href="${DATA.sheetUrl}" target="_blank" rel="noopener">원본 시트 열기</a>` : ""}</p>`;
+    <p class="foot">시트 기준 ${esc(DATA.updated)} 업데이트${IS_ADMIN && DATA.sheetUrl ? ` · <a href="${DATA.sheetUrl}" target="_blank" rel="noopener">원본 시트 열기</a>` : ""}</p>`;
 }
 
 $("#cal-grid").addEventListener("click", ev => {
@@ -1919,7 +1919,7 @@ function renderOpinion() {
     qs.sort((a, b) => b.dup - a.dup || b.lk - a.lk || b.dn - a.dn || a.i - b.i);
     return (q.total == null ? "" : `<div class="op-card"><p>팔로워 질문 ${q.total.toLocaleString()}개 중 <b style="display:inline">${q.unanswered.toLocaleString()}개(${pct(q.unanswered, q.total)}%)</b>에 댓글 답글이 달리지 않았어요. DM이나 스토리로 답했을 수도 있어요.</p></div>`) +
       (qs.length ? `<p style="margin:2px 2px 8px;font-size:12px;color:var(--muted)">위에서부터 중복 질문이 많거나, 좋아요가 많은 질문, 최근 질문 순서예요</p>` : "") +
-      qs.map(({e, dup}) => `<div class="op-card"><div class="op-head"><b style="font-weight:500">${escRaw(e.q)}</b><span>${escRaw(e.d)}</span></div>${dup >= 2 ? `<span style="display:inline-block;margin:6px 6px 0 0;padding:2px 8px;border-radius:999px;background:var(--surface-2);font-size:11.5px;font-weight:600;color:var(--muted)">비슷한 질문 ${dup}개</span>` : ""}${e.url ? `<a class="src2" href="${escRaw(e.url)}" target="_blank" rel="noopener">${escRaw(e.post || "게시물 보기")} ↗</a>` : ""}</div>`).join("");
+      qs.map(({e, dup}) => `<div class="op-card"><div class="op-head"><b style="font-weight:500">${escRaw(e.q)}</b><span>${escRaw(e.d)}</span></div>${dup >= 2 ? `<span style="display:inline-block;margin:6px 6px 0 0;padding:2px 8px;border-radius:999px;background:var(--surface-2);font-size:11.5px;font-weight:600;color:var(--muted)">비슷한 질문 ${dup}개</span>` : ""}${e.url && /^https:\/\//i.test(e.url) ? `<a class="src2" href="${escRaw(e.url)}" target="_blank" rel="noopener">${escRaw(e.post || "게시물 보기")} ↗</a>` : ""}</div>`).join("");
   })();
   const total = MOOD.reduce((n, m) => n + m.v, 0);
   const maxF = O.flavors ? Math.max(...O.flavors.v.map(x => x[1])) : 1;

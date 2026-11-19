@@ -146,6 +146,9 @@ def cloak(html, cut="<style>"):
     return head + "<noscript>이 캘린더는 휴대폰 브라우저에서 열어 주세요.</noscript>\n" + loader
 
 
+SHEET_RE = re.compile(r"https://docs\.google\.com/spreadsheets/d/[A-Za-z0-9_-]+[^\"'\s<]*")   # 원본 시트 주소
+
+
 def main():
     if PWA.exists():
         shutil.rmtree(PWA)
@@ -177,10 +180,16 @@ def main():
         for f in (PWA / "downloads").glob("*.mobileconfig"):
             shutil.copy(f, PWA / "downloads" / "app.mobileconfig")
     # 관리자(admin) 캘린더가 모든 셀러 일정을 모아 보도록 데이터 파일도 함께 올림
-    shutil.copy(DATA, PWA / "data.json")
+    # 보안(2.1): 공개 파일에는 원본 시트 주소·ID 를 넣지 않음
+    (PWA / "data.json").write_text(SHEET_RE.sub("", DATA.read_text(encoding="utf-8")), encoding="utf-8")
     for f in ("config.json", "ideas.json", "opinion.json"):   # admin 캘린더가 셀러 화면을 그대로 그리는 데 씀
         if (HERE / f).exists():
-            shutil.copy(HERE / f, PWA / f)
+            if f == "config.json":
+                cfg = json.loads((HERE / f).read_text(encoding="utf-8"))
+                cfg.pop("sheet_id", None)
+                (PWA / f).write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+            else:
+                shutil.copy(HERE / f, PWA / f)
     data = json.loads(DATA.read_text(encoding="utf-8"))
     # 휴대폰 캘린더 구독용 파일: 알림 시점(당일 오전 / 하루 전 / 3일 전)마다 하나씩
     for fname, alarm_at, suffix in cal_feed.ALARMS:
@@ -194,7 +203,7 @@ def main():
     digest = hashlib.sha256((json.dumps(data, ensure_ascii=False, sort_keys=True) + code).encode()).hexdigest()[:16]
     (PWA / "version.txt").write_text(digest, encoding="utf-8")
     # 화면이 자기 버전을 알고 있어야 새 버전이 올라왔는지 비교할 수 있음
-    (PWA / "index.html").write_text(cloak(html.replace("__APPVER__", digest)), encoding="utf-8")
+    (PWA / "index.html").write_text(cloak(SHEET_RE.sub("", html.replace("__APPVER__", digest))), encoding="utf-8")
     # 아이콘이 바뀌면 주소 끝(?v=)도 바뀌어서, 설치된 앱(안드로이드·PC 크롬)이 새 아이콘을 알아채고 스스로 바꾼다
     iv = hashlib.sha256((PWA / "icon-512.png").read_bytes()).hexdigest()[:8]
     manifest = {
