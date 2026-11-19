@@ -1152,7 +1152,7 @@ function renderAgenda() {
       : `<div class="empty">이 날은 시트에 잡힌 콘텐츠가 없어요.</div>`}
     <div class="up-head">${sel === TODAY ? `다가오는 ${UPCOMING}일` : `이후 ${UPCOMING}일`}</div>
     ${soon.length ? soon.join("") : `<div class="empty sm">${UPCOMING}일 안에 잡힌 콘텐츠가 없어요.</div>`}
-    <p class="foot">시트 기준 ${esc(DATA.updated)} 업데이트 · <a href="${DATA.sheetUrl}" target="_blank" rel="noopener">원본 시트 열기</a></p>`;
+    <p class="foot">시트 기준 ${esc(DATA.updated)} 업데이트${IS_ADMIN ? ` · <a href="${DATA.sheetUrl}" target="_blank" rel="noopener">원본 시트 열기</a>` : ""}</p>`;
 }
 
 $("#cal-grid").addEventListener("click", ev => {
