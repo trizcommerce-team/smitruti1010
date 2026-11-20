@@ -9,6 +9,7 @@
 import hashlib
 import html
 import io
+import os
 import posixpath
 import re
 import urllib.parse
@@ -28,10 +29,22 @@ NS = {
 LINK_OPEN, LINK_SEP, LINK_CLOSE = "⟦", "|", "⟧"
 
 
+# ---------------------------------------------------------------- 시트 열기 (보안 3단계)
+# GitHub Actions 에서는 로봇 계정(calendar-reader@triz-calendar, 보기 전용) 출입증이 GOOGLE_TOKEN 으로 들어온다.
+# 출입증이 있으면 시트가 비공개여도 읽을 수 있고, 없으면 예전처럼 공개 주소로 읽는다.
+TOKEN = os.environ.get("GOOGLE_TOKEN", "").strip()
+
+
+def open_url(url, timeout=120):
+    h = {"User-Agent": "Mozilla/5.0"}
+    if TOKEN and url.startswith(("https://docs.google.com/", "https://sheets.googleapis.com/")):
+        h["Authorization"] = "Bearer " + TOKEN
+    return urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=timeout)
+
+
 # ---------------------------------------------------------------- 링크
 def _get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=120) as r:
+    with open_url(url) as r:
         return r.read().decode("utf-8", "replace")
 
 
@@ -155,6 +168,11 @@ def sheet_key(name):
 
 def list_tabs(sheet_id):
     """시트의 보이는 탭 [(이름, gid)] (시트에 보이는 순서)"""
+    if TOKEN:  # 로봇 계정: Sheets API 로 탭 목록 (숨긴 탭 제외)
+        import json
+        with open_url(f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}?fields=sheets.properties(title,sheetId,hidden)") as r:
+            props = [s["properties"] for s in json.loads(r.read())["sheets"]]
+        return [(p["title"], str(p["sheetId"])) for p in props if not p.get("hidden")]
     page = _get(f"https://docs.google.com/spreadsheets/d/{sheet_id}/htmlview")
     items = re.findall(r'items\.push\(\{name: "((?:[^"\\]|\\.)*)", pageUrl: "[^"]*", gid: "(\d+)"', page)
     return [(raw.encode().decode("unicode_escape").encode("latin-1").decode("utf-8").replace("\\/", "/"), gid)

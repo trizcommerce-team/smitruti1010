@@ -44,7 +44,7 @@ def fetch(url, dest, tries=4):
     import zipfile
     for i in range(1, tries + 1):
         try:
-            with urllib.request.urlopen(url, timeout=600) as r:
+            with sheet_media.open_url(url, timeout=600) as r:
                 dest.write_bytes(r.read())
             zipfile.ZipFile(dest).testzip()
             return
@@ -102,7 +102,7 @@ def download(tries=4):
     url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=xlsx"
     for i in range(1, tries + 1):
         try:
-            with urllib.request.urlopen(url, timeout=600) as r:
+            with sheet_media.open_url(url, timeout=600) as r:
                 XLSX.write_bytes(r.read())
             zipfile.ZipFile(XLSX).testzip()  # 덜 받은 파일 걸러내기
             return

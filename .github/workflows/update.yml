@@ -33,7 +33,19 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install openpyxl pillow
+      # 보안 3단계: 구글 '열쇠 없는 연결'로 로봇 계정(보기 전용) 출입증 받기 — 비공개 시트도 읽을 수 있음
+      - id: gauth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/764836683471/locations/global/workloadIdentityPools/github/providers/github-actions
+          service_account: calendar-reader@triz-calendar.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/spreadsheets.readonly
+          access_token_lifetime: 3600s
+          create_credentials_file: false
       - name: 시트 받아서 앱 만들기
+        env:
+          GOOGLE_TOKEN: ${{ steps.gauth.outputs.access_token }}
         run: |
           python build_app.py
           python pwa_build.py
