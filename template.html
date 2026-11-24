@@ -1330,7 +1330,7 @@ function openHelp() { // 캘린더마다 있는 기능만 골라서 설명
       const O = OPINION, has = k => Array.isArray(O[k]) && O[k].length, IQ = O.iq || {};
       const ch = O.changes, hasCh = ch && ((ch.new || []).length || (ch.deeper || []).length);
       const S = [
-        hasCh && ["🆕 지난 기간 대비 달라진 여론", "지난 정리와 비교해 새로 생기거나 더 짙어진 여론"],
+        hasCh && ["🆕 지난주 대비 달라진 여론", "최근 일주일 동안 새로 생기거나 더 짙어진 여론"],
         has("headline") && ["한눈에 보기", "팔로워 반응 핵심 요약"],
         has("mood") && ["댓글 분위기", "공감·질문·후기·요청·불만 비율"],
         IQ.replies && ["💬 답글 소통", "셀러 답글을 받은 팔로워 비율"],
@@ -1879,13 +1879,11 @@ $("#month-pager").addEventListener("click", ev => {
   }
 });
 
-/* ---------------- 댓글 여론 (최근 3개월) ---------------- */
+/* ---------------- 댓글 여론 (최근 한 달 · 달라진 여론은 최근 일주일) ---------------- */
 let opFilter = "전체", opDone = false;
 const OP_LV = {"높음": "high", "중간": "mid", "낮음": "low"};
 function renderOpinion() {
   if (!OPINION || opDone) return; opDone = true;
-  { const eb = document.querySelector("#v-op .eyebrow"), md0 = s => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
-    if (eb && OPINION.from && OPINION.to) eb.textContent = `최근 팔로워 댓글 · ${md0(OPINION.from)}~${md0(OPINION.to)} 게시물 댓글`; }
   const O = {headline: [], mood: [], loves: [], asks: [], wants: [], warns: [], kinds: [], who: [], ideas: [], posts: [], ...OPINION}, md = s => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
   const sec = (title, sub, body) => `<section class="op-sec"><h3>${title}${sub ? `<small>${sub}</small>` : ""}</h3>${body}</section>`;
   const card = (t, d, extra = "") => `<div class="op-card"><b>${escRaw(t)}</b><p>${escRaw(d)}</p>${extra}</div>`;
@@ -1927,7 +1925,7 @@ function renderOpinion() {
   const ch = O.changes || {}, chItem = (x, tag) => `<div class="op-card"><div class="op-head"><b>${escRaw(x.t)}</b><span class="op-tag ${tag === "NEW" ? "new" : "up"}">${tag}</span></div><p>${escRaw(x.d)}</p>${x.src ? `<span class="src2">근거: ${escRaw(x.src)}</span>` : ""}</div>`;
   const chBody = (ch.new || []).length || (ch.deeper || []).length
     ? (ch.new || []).map(x => chItem(x, "NEW")).join("") + (ch.deeper || []).map(x => chItem(x, "심화")).join("")
-    : `<div class="op-card"><p style="color:var(--muted);font-size:13px">${ch.since ? "지난 정리와 비교해 새로 생기거나 짙어진 여론은 없었어요." : "다음 업데이트부터 지난 정리와 비교해 새로 생기거나 더 짙어진 여론을 여기에 따로 보여드려요."}</p></div>`;
+    : `<div class="op-card"><p style="color:var(--muted);font-size:13px">${ch.since ? "최근 일주일 동안 새로 생기거나 짙어진 여론은 없었어요." : "다음 업데이트부터 일주일마다 새로 생기거나 더 짙어진 여론을 여기에 따로 보여드려요."}</p></div>`;
   // 게시물별 댓글 요약은 최근 한 달(정리 기준일 to/at 에서 30일 전까지) 게시물만 보여 줌. p.d 는 'MM/DD'(연도 없음)
   const opEnd = /^\d{4}-\d{2}-\d{2}/.test(O.to || "") ? parse(O.to.slice(0, 10)) : /^\d{4}-\d{2}-\d{2}/.test(O.at || "") ? parse(O.at.slice(0, 10)) : new Date();
   const opStart = new Date(opEnd); opStart.setDate(opEnd.getDate() - 30);
@@ -1941,14 +1939,20 @@ function renderOpinion() {
   const md2 = d => `${d.getMonth() + 1}/${d.getDate()}`;
   const rpDays = RP.map(p => postDay(p.d)).filter(Boolean).sort((a, b) => a - b);
   const opRange = rpDays.length ? `${md2(rpDays[0])}~${md2(rpDays[rpDays.length - 1])}` : "최근 한 달";   // 지금 보이는 게시물 요약의 실제 기간
+  // 맨 위 날짜·안내 문장도 이 실제 기간(최근 한 달)으로 맞춤 (예전 3개월 범위가 적힌 note 도 바꿔 보여 줌)
+  { const eb = document.querySelector("#v-op .eyebrow"); if (eb) eb.textContent = `최근 팔로워 댓글 · ${opRange} 게시물 댓글`; }
+  const opNote = String(O.note || "").replace(/\d{1,2}\/\d{1,2}\s*~\s*\d{1,2}\/\d{1,2}/, opRange);
+  // 달라진 여론은 일주일 단위: 정리 기준일(at)과 그 7일 전
+  const wkEnd = /^\d{4}-\d{2}-\d{2}/.test(O.at || "") ? parse(O.at.slice(0, 10)) : opEnd, wkStart = new Date(wkEnd); wkStart.setDate(wkEnd.getDate() - 7);
+  const wkRange = `${md2(wkStart)}~${md2(wkEnd)}`;
   const kinds = ["전체", ...new Set(RP.map(p => p.kind))];
   $("#op-scroll").innerHTML = `
     <p class="op-upd">최근 업데이트 ${ymd(O.at)} · 매주 업데이트돼요</p>
     <div class="hero" style="--c:var(--accent)"><span class="swatch"></span>
       <h2>팔로워는 이렇게 말해요</h2>
-      <div class="full">${md(O.from)}~${md(O.to)} 게시물에 달린 팔로워 댓글을 읽고 정리한 여론이에요 · ${md(O.at)} 기준</div>
-      <p class="idea-intro" style="margin-top:8px">${escRaw(O.note)} ${md(O.at)} 정리.</p></div>
-    ${!O.changes ? "" : sec("🆕 지난 기간 대비 달라진 여론", ch.since ? `${md(ch.since)} 정리와 비교해 새로 보이거나 더 짙어진 여론이에요` : "", chBody)}
+      <div class="full">${opRange} 게시물에 달린 팔로워 댓글을 읽고 정리한 여론이에요 · ${md(O.at)} 기준</div>
+      <p class="idea-intro" style="margin-top:8px">${escRaw(opNote)} ${md(O.at)} 정리.</p></div>
+    ${!O.changes ? "" : sec("🆕 지난주 대비 달라진 여론", `${wkRange} 일주일 동안 새로 보이거나 더 짙어진 여론이에요`, chBody)}
     ${!O.headline.length ? "" : sec("한눈에 보기", "", `<ol class="op-hl">${O.headline.map(h => `<li>${escRaw(h)}</li>`).join("")}</ol>`)}
     ${!MOOD.length ? "" : sec("댓글 분위기", escRaw(moodNote), `<div class="op-card"><div class="op-stack" role="img" aria-label="${escRaw(MOOD.map(m => `${m.k} ${m.v}%`).join(", "))}">${MOOD.map(m => `<i style="--c:${m.c};width:${m.v / total * 100}%"></i>`).join("")}</div>
       <div class="op-legend">${MOOD.map(m => `<div style="--c:${m.c}"><i></i><span>${escRaw(m.k)}${m.n != null ? ` <small style="display:inline;color:var(--muted)">${m.n.toLocaleString()}개</small>` : ""}</span><em>${m.v}%</em><small>${escRaw(m.ex)}</small></div>`).join("")}</div></div>`)}
