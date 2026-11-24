@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.deploy2.outputs.page_url || steps.deploy3.outputs.page_url }}
     env:
       PYTHONUTF8: "1"
     steps:
@@ -76,6 +76,20 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: pwa
+      # 배포: 방금 올린 사이트 묶음을 GitHub 가 바로 못 찾아 "No artifacts named github-pages" 로 실패하는 일이 잦음
+      # → 실패하면 잠시 기다렸다가 두 번까지 다시 시도 (셋 다 실패할 때만 실패 메일이 감)
       - if: steps.check.outputs.changed == 'true'
         id: deploy
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - if: steps.check.outputs.changed == 'true' && steps.deploy.outcome == 'failure'
+        run: sleep 30
+      - if: steps.check.outputs.changed == 'true' && steps.deploy.outcome == 'failure'
+        id: deploy2
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - if: steps.check.outputs.changed == 'true' && steps.deploy.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        run: sleep 90
+      - if: steps.check.outputs.changed == 'true' && steps.deploy.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        id: deploy3
         uses: actions/deploy-pages@v4
