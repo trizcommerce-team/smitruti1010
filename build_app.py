@@ -1238,7 +1238,7 @@ def main():
     since = CONFIG.get("since")
     if since:  # 이 날짜 이후 콘텐츠만
         events = [e for e in events if e["end"] >= since]
-        products = [p for p in products if (p["period"] or ["9999"])[1] >= since or any((sl["date"] or "") >= since for sl in p["slots"])]
+        products = [p for p in products if (p["period"] or ["9999", "9999"])[1] >= since or any((sl["date"] or "") >= since for sl in p["slots"])]
         for p in products:
             p["slots"] = [sl for sl in p["slots"] if not sl["date"] or sl["date"] >= since]
     products.sort(key=lambda p: (p["period"] or [max((s["date"] for s in p["slots"] if s["date"]), default="0000")])[0],
