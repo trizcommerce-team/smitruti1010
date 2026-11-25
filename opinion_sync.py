@@ -1,5 +1,5 @@
 """댓글 여론 '최종 연동': admin 에서 체크한 항목만 셀러 캘린더 opinion.json 에 넣는다.
-- admin 검토 대기 초안: https://trizcommerce.github.io/admin/drafts/<저장소>/opinion.json
+- admin 검토 대기 초안: https://trizcommerce-team.github.io/admin/drafts/<저장소>/opinion.json
 - 체크 목록: 조회 기록 Apps Script  ?action=opinion_sync&repo=<저장소>  (admin 의 '최종 연동' 버튼이 보냄)
 - 체크 목록이 지금 초안(at 같은 것)에 대한 것이면, 셀러 opinion.json 을 '초안에서 체크한 항목만'으로 바꾼다.
   체크를 다 뺀 묶음은 셀러 화면에서 빠진다(2026-11-16 재열님: 체크 해제가 반영 안 된다고 해서 바꿈).
@@ -7,7 +7,7 @@ build_app.py 가 빌드 때 부른다(실패해도 빌드는 계속). 바뀌면 
 import json, os, re, urllib.request
 from pathlib import Path
 
-ADMIN = "https://trizcommerce.github.io/admin/"
+ADMIN = "https://trizcommerce-team.github.io/admin/"
 META = ("from", "to", "at", "note", "moodNote")
 
 

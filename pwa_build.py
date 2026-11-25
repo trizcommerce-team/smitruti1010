@@ -219,6 +219,8 @@ def main():
     (PWA / "sw.js").write_text(SW.replace("__VER__", dt.datetime.now().strftime("%Y%m%d%H%M")), encoding="utf-8")
     if "--zip" in __import__("sys").argv:
         shutil.make_archive(str(ZIP), "zip", PWA)
+    (PWA / "files.txt").write_text("\n".join(sorted(p.relative_to(PWA).as_posix() for p in PWA.rglob("*")
+                                                    if p.is_file() and p.name != "files.txt")), encoding="utf-8")   # 예전 주소 거울 사이트용 목록
     print("built", PWA, "version", digest)
 
 
