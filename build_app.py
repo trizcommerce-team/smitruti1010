@@ -280,15 +280,54 @@ def reanchor_images(ws):
     return moved
 
 
+def scene_starts(text):
+    """장면 구간 시작 줄: 번호 항목(#1, ①…), '#1-1.'·'# 장면' 줄, '[슬라이드 N]' 머리줄"""
+    marks = set(numbered_starts(text))
+    for i, ln in enumerate(text.split("\n")):
+        if re.match(r"\s*(#|\[\s*슬라이드)", re.sub(r"⟪[^⟫]*⟫", "", ln)):
+            marks.add(i)
+    return sorted(marks)
+
+
+def _seams(g):
+    """g 의 가로 이음선: 바로 윗줄과 확 다르고 2줄 위·아래는 고른 줄이, 폭의 1/3 이상 이어지는 곳 (가장자리 15% 제외)"""
+    from PIL import Image, ImageChops
+    w, h = g.size
+    k = 6
+    px = ImageChops.difference(g.crop((0, 0, w, h - 1)), g.crop((0, 1, w, h))).resize((k, h - 1), Image.BOX).load()
+    for y in range(max(2, int(0.15 * h)), min(h - 3, int(0.85 * h))):
+        hit = [px[x, y] > 30 and px[x, y - 2] < px[x, y] / 3 and px[x, y + 2] < px[x, y] / 3 for x in range(k)]
+        if any(hit[x] and hit[x + 1] for x in range(k - 1)):
+            return True
+    return False
+
+
+def is_collage(path):
+    """사진 여러 장을 한 장에 이어 붙인 '묶음 사진'인지 (붙인 자리의 곧은 이음선으로 판단)"""
+    from PIL import Image
+    try:
+        im = Image.open(path).convert("L")
+    except Exception:
+        return False
+    if max(im.size) > 600:
+        r = 600 / max(im.size)
+        im = im.resize((max(8, round(im.width * r)), max(8, round(im.height * r))), Image.NEAREST)
+    return min(im.size) >= 8 and (_seams(im) or _seams(im.transpose(Image.Transpose.TRANSPOSE)))
+
+
 def place_photos(ws, item):
-    """사진이 시트에서 놓인 높이로, 옆 칸 번호 항목(#1, #2 …) 중 어디에 붙는지 계산.
-    결과: item["__field"] = 짝지을 칸, item["__place"] = 사진별 항목 번호(-1 = 첫 항목 앞)"""
+    """낱개 사진은 시트에서 놓인 높이 옆 장면 줄(#1, #1-1, [슬라이드 2] …) 앞에, 묶음 사진은 맨 아래 비주얼 예시로.
+    결과: item["__field"] = 짝지을 칸, item["__marks"] = 구간 시작 줄,
+    item["__place"] = 사진마다 넣을 구간 번호 - 1 (-1 = 첫 구간 앞, None = 맨 아래 묶음)"""
     imgs, pos, src = item.get("__images", []), item.pop("__pos", []), item.pop("__src", {})
     item.pop("__bands", None)
     if not imgs or len(pos) != len(imgs):
         return
+    single = [not is_collage(HERE / f) for f in imgs]
+    if not any(single):  # 모두 묶음 사진 → 가이드 칸 아래 비주얼 예시 (기본 화면)
+        return
     cands = [(k, v) for k, v in item.items() if not k.startswith("__") and isinstance(v, str) and k in src
-             and len(numbered_starts(v)) >= 2]
+             and len(scene_starts(v)) >= 2]
     if not cands:
         return
     field, text = next(((k, v) for k, v in cands if re.search(r"비주얼|가이드|설명|구성|플로우", k)), cands[0])
@@ -308,17 +347,20 @@ def place_photos(ws, item):
             tops, text_h = [t * scale for t in tops], text_h * scale
     valign = (cell.alignment.vertical or "bottom") if cell_h and cell_h > text_h else "top"
     offset = 0 if valign == "top" else (cell_h - text_h) / (2 if valign == "center" else 1)
-    starts = [offset + tops[i] for i in numbered_starts(text)]
-    marks = ([(-1, offset)] if starts and starts[0] - offset > 6 else []) + list(enumerate(starts))
+    lines = scene_starts(text)
+    marks = list(enumerate(offset + tops[i] for i in lines))
     place = []
-    for r, (off, h) in pos:
+    for one, (r, (off, h)) in zip(single, pos):
+        if not one:
+            place.append(None)
+            continue
         if r < row:
             place.append(-1)
             continue
         above = sum(row_height_pt(ws, x) for x in range(row, r))
-        y_top = above + off / 12700  # 사진 윗부분 높이 → 가장 가까운 항목 시작 줄
-        place.append(min(marks, key=lambda kv: abs(kv[1] - y_top))[0] if marks else -1)
-    item["__field"], item["__place"] = field, place
+        y = above + (off + min(h / 2, 60 * 12700)) / 12700  # 사진 윗부분 조금 아래(최대 60pt) 옆 줄 → 가장 가까운 장면 줄 앞에
+        place.append(min(marks, key=lambda kv: abs(kv[1] - y))[0] - 1 if marks else -1)
+    item["__field"], item["__marks"], item["__place"] = field, lines, place
 
 
 def row_images(ws, r, cols=None):
@@ -863,11 +905,9 @@ def parse_product(ws, colors, blk=None):
             after = [sl["date"] for sl in slots if (sl["label"].startswith("D+") or sl["label"] == "마감") and sl["date"]]
             period = [opens[0], max(after + opens)]
 
-    bottom = ws.title.strip() in CONFIG.get("photos_bottom_tabs", [])  # 이 탭은 사진을 가이드 맨 아래 비주얼 참고로 (재열님 요청)
     for sl in slots:
         for it in sl["items"]:
-            if not bottom:
-                place_photos(ws, it)
+            place_photos(ws, it)
             it.pop("__src", None)
             it.pop("__pos", None)
     name = blk[4] if blk else ws.title.strip()
