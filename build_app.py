@@ -280,24 +280,15 @@ def reanchor_images(ws):
     return moved
 
 
-def scene_starts(text):
-    """장면 구간 시작 줄: '#1.', '#1-1.', '# …' 장면 줄과 '[슬라이드 N]' 머리줄 (스미홈트 시트는 하위 번호로 컷을 나눔)"""
-    marks = set(numbered_starts(text))
-    for i, ln in enumerate(text.split("\n")):
-        if re.match(r"\s*(#|\[\s*슬라이드)", re.sub(r"⟪[^⟫]*⟫", "", ln)):
-            marks.add(i)
-    return sorted(marks)
-
-
 def place_photos(ws, item):
-    """사진이 시트에서 놓인 높이로, 옆 칸 장면 줄(#1, #1-1, [슬라이드 2] …) 중 어디에 붙는지 계산.
-    결과: item["__field"] = 짝지을 칸, item["__marks"] = 구간 시작 줄, item["__place"] = 사진을 넣을 구간 앞 번호 - 1 (-1 = 첫 구간 앞)"""
+    """사진이 시트에서 놓인 높이로, 옆 칸 번호 항목(#1, #2 …) 중 어디에 붙는지 계산.
+    결과: item["__field"] = 짝지을 칸, item["__place"] = 사진별 항목 번호(-1 = 첫 항목 앞)"""
     imgs, pos, src = item.get("__images", []), item.pop("__pos", []), item.pop("__src", {})
     item.pop("__bands", None)
     if not imgs or len(pos) != len(imgs):
         return
     cands = [(k, v) for k, v in item.items() if not k.startswith("__") and isinstance(v, str) and k in src
-             and len(scene_starts(v)) >= 2]
+             and len(numbered_starts(v)) >= 2]
     if not cands:
         return
     field, text = next(((k, v) for k, v in cands if re.search(r"비주얼|가이드|설명|구성|플로우", k)), cands[0])
@@ -317,17 +308,17 @@ def place_photos(ws, item):
             tops, text_h = [t * scale for t in tops], text_h * scale
     valign = (cell.alignment.vertical or "bottom") if cell_h and cell_h > text_h else "top"
     offset = 0 if valign == "top" else (cell_h - text_h) / (2 if valign == "center" else 1)
-    lines = scene_starts(text)
-    marks = list(enumerate(offset + tops[i] for i in lines))
+    starts = [offset + tops[i] for i in numbered_starts(text)]
+    marks = ([(-1, offset)] if starts and starts[0] - offset > 6 else []) + list(enumerate(starts))
     place = []
     for r, (off, h) in pos:
         if r < row:
             place.append(-1)
             continue
         above = sum(row_height_pt(ws, x) for x in range(row, r))
-        y = above + (off + min(h / 2, 60 * 12700)) / 12700  # 사진 윗부분 조금 아래(최대 60pt) 옆 줄 → 가장 가까운 장면 줄 앞에
-        place.append(min(marks, key=lambda kv: abs(kv[1] - y))[0] - 1 if marks else -1)
-    item["__field"], item["__marks"], item["__place"] = field, lines, place
+        y_top = above + off / 12700  # 사진 윗부분 높이 → 가장 가까운 항목 시작 줄
+        place.append(min(marks, key=lambda kv: abs(kv[1] - y_top))[0] if marks else -1)
+    item["__field"], item["__place"] = field, place
 
 
 def row_images(ws, r, cols=None):
@@ -872,9 +863,11 @@ def parse_product(ws, colors, blk=None):
             after = [sl["date"] for sl in slots if (sl["label"].startswith("D+") or sl["label"] == "마감") and sl["date"]]
             period = [opens[0], max(after + opens)]
 
+    bottom = ws.title.strip() in CONFIG.get("photos_bottom_tabs", [])  # 이 탭은 사진을 가이드 맨 아래 비주얼 참고로 (재열님 요청)
     for sl in slots:
         for it in sl["items"]:
-            place_photos(ws, it)
+            if not bottom:
+                place_photos(ws, it)
             it.pop("__src", None)
             it.pop("__pos", None)
     name = blk[4] if blk else ws.title.strip()
