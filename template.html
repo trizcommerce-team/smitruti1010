@@ -474,6 +474,12 @@ details.fold,.op-card,.op-post,.op-hl li{border-radius:18px}
 
 /* 휴대폰 다크 모드와 상관없이 항상 설정한 디자인으로 보이게 */
 :root,:root[data-theme]{color-scheme:light only}
+/* NEW 표시 (이 기기에서 아직 확인 안 한 새·바뀐 콘텐츠) */
+.is-new{position:relative}
+.entry.is-new::after,.hero.is-new::after{content:"NEW";position:absolute;top:7px;right:10px;background:#E0352B;color:#fff;font-size:9.5px;font-weight:800;letter-spacing:.03em;line-height:1;padding:3px 5px;border-radius:6px}
+.tab.is-new::after{content:"NEW";margin-left:5px;background:#E0352B;color:#fff;font-size:9px;font-weight:800;line-height:1;padding:3px 4px;border-radius:5px}
+.nav button.is-new::after{content:"NEW";position:absolute;top:5px;left:calc(50% + 6px);background:#E0352B;color:#fff;font-size:8.5px;font-weight:800;line-height:1;padding:2px 4px;border-radius:5px}
+.day.is-new::after{content:"";position:absolute;top:4px;right:5px;width:7px;height:7px;border-radius:50%;background:#E0352B;z-index:2}
 </style>
 
 <div class="app" id="app">
@@ -728,6 +734,73 @@ DATA.months.filter(m => m.kind === "grid").forEach(m => m.days.forEach(d => {
   if (d.holiday) push(d.date, {src: "event", fmt: "meeting", title: d.holiday, sort: 0, holiday: true, ev: {text: d.holiday}});
 }));
 Object.values(byDate).forEach(l => l.sort((a, b) => a.sort - b.sort));
+
+/* ---------------- NEW 표시 (admin·셀러 캘린더 공통) ----------------
+   시트·초안이 바뀌어 새로 생기거나 내용이 바뀐 콘텐츠에 빨간 NEW. 콘텐츠마다 '내용 지문'을 만들어 이 기기(localStorage)에 본 것을 기록.
+   콘텐츠를 열면 그 콘텐츠의 NEW가, 하단 탭을 누르면 그 탭의 NEW가 사라짐. 이 기기에서 처음 열 때는 지금 내용을 모두 '본 것'으로 시작. */
+const NEW = (() => {
+  const hsh = o => { const s = JSON.stringify(o); let x = 5381; for (let i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0; return x.toString(36); };
+  const memo = new WeakMap();   // 화면이 바뀔 때마다 다시 칠하므로 지문은 한 번만 계산 (월별 묶음은 첫 칸 객체 + 길이로 구분)
+  const mk = (obj, tag, f) => { const m = memo.get(obj) || {}; if (!(tag in m)) { m[tag] = f(); memo.set(obj, m); } return m[tag]; };
+  const k = {
+    slot: (pid, s) => mk(s, "s", () => "s" + pid + hsh(s)), event: ev => mk(ev, "e", () => "e" + hsh(ev)),
+    month: o => Array.isArray(o) ? mk(o[0], "m" + o.length, () => "m" + hsh(o)) : mk(o, "m", () => "m" + hsh(o)),
+    prod: p => mk(p, "p", () => "p" + p.id + hsh([p.name, p.round, p.period, p.info, p.images])), idea: it => mk(it, "i", () => "i" + hsh([it.t, it.intent, it.hooks])),
+    op: () => "o" + hsh(OPINION && OPINION.at),
+  };
+  const entryKey = e => e.holiday ? null : e.src === "slot" ? k.slot(e.pid, e.slot) : e.src === "month" ? k.month(e.fields) : e.ev ? k.event(e.ev) : null;
+  const monthKeys = m => m.kind === "grid"
+    ? m.days.flatMap(d => { const {topics, stories} = dayGroups(d); return [...topics.map(k.month), ...stories.map(x => k.month([x]))]; })
+    : m.sections.flatMap(s => s.items.map(k.month));
+  const prodKeys = p => [k.prod(p), ...p.slots.map(s => k.slot(p.id, s))];
+  const tabs = {
+    "v-cal": Object.values(byDate).flat().map(entryKey).filter(Boolean),
+    "v-prod": DATA.products.flatMap(prodKeys),
+    "v-month": DATA.months.flatMap(monthKeys),
+    "v-idea": IDEAS ? IDEAS.items.map(k.idea) : [],
+    "v-op": OPINION ? [k.op()] : [],
+  };
+  const all = new Set(Object.values(tabs).flat());
+  const tabKeys = Object.entries(tabs).flatMap(([id, ks]) => ks.map(x => id + "|" + x));   // 탭 NEW 확인은 탭마다 따로
+  // 기기별 기록. 모든 캘린더가 같은 사이트 주소를 쓰므로 셀러마다 따로: admin은 ?s=셀러, 셀러 캘린더는 주소 경로
+  const SK = IS_ADMIN ? "admNew:" + (new URLSearchParams(location.search).get("s") || "") : "newSeen:" + location.pathname;
+  let st = null; try { st = JSON.parse(localStorage.getItem(SK)); } catch (e) {}
+  const seen = new Set(st ? st.seen : all), ack = new Set(st ? st.ack : tabKeys), live = new Set(tabKeys);
+  const save = () => { try { localStorage.setItem(SK, JSON.stringify({seen: [...seen].filter(x => all.has(x)), ack: [...ack].filter(x => live.has(x))})); } catch (e) {} };
+  if (!st) save();
+  const isNew = x => !!x && all.has(x) && !seen.has(x);
+  const tabNew = id => (tabs[id] || []).some(x => !seen.has(x) && !ack.has(id + "|" + x));
+  const set = (el, on) => el && el.classList.toggle("is-new", !!on);
+  function paint() {
+    document.querySelectorAll(".nav button[data-view]").forEach(b => set(b, tabNew(b.dataset.view)));
+    document.querySelectorAll("#cal-grid .day[data-k]").forEach(d => set(d, (byDate[d.dataset.k] || []).some(e => isNew(entryKey(e)))));
+    document.querySelectorAll("#agenda .entry[data-idx]").forEach(b => set(b, isNew(entryKey(agendaList[+b.dataset.idx] || {}))));
+    document.querySelectorAll("#prod-pager .entry[data-idx]").forEach(b => {
+      const [pi, si] = b.dataset.idx.split(":").map(Number), p = DATA.products[pi]; set(b, p && isNew(k.slot(p.id, p.slots[si])));
+    });
+    document.querySelectorAll("#prod-tabs .tab[data-i]").forEach(b => { const p = DATA.products[+b.dataset.i]; set(b, p && prodKeys(p).some(isNew)); });
+    document.querySelectorAll("#prod-pager .page[data-i] > .hero").forEach(h => { const p = DATA.products[+h.parentElement.dataset.i]; set(h, p && isNew(k.prod(p))); });
+    document.querySelectorAll("#month-pager .entry[data-m]").forEach(b => set(b, isNew(monthKey(b.dataset.m))));
+    document.querySelectorAll("#month-tabs .tab[data-i]").forEach(b => { const m = DATA.months[+b.dataset.i]; set(b, m && monthKeys(m).some(isNew)); });
+    document.querySelectorAll("#idea-scroll .entry[data-idea]").forEach(b => { const it = ideaShown[+b.dataset.idea]; set(b, it && isNew(k.idea(it))); });
+    set(document.querySelector("#op-scroll .hero"), OPINION && isNew(k.op()));
+  }
+  function monthKey(dm) {   // 월별 탭 항목(data-m="월:날/섹션:항목") → 지문
+    const [mi, a, c] = dm.split(":"), m = DATA.months[+mi];
+    if (m.kind !== "grid") return k.month(m.sections[+a].items[+c]);
+    const {topics, stories} = dayGroups(m.days[+a]);
+    return c[0] === "s" ? k.month([stories[+c.slice(1)]]) : k.month(topics[+c.slice(1)]);
+  }
+  let queued = false;
+  const later = () => { if (!queued) { queued = true; setTimeout(() => { queued = false; paint(); }, 60); } };
+  new MutationObserver(later).observe(document.body, {childList: true, subtree: true});
+  later();
+  return {
+    k, entryKey, monthKey, isNew,
+    see(x, quiet) { if (!x || seen.has(x)) return; seen.add(x); save(); if (!quiet) later(); },
+    ack(id) { (tabs[id] || []).forEach(x => ack.add(id + "|" + x)); save(); later(); },
+  };
+})();
 
 const periods = DATA.products.filter(p => p.period).map(p => ({pid: p.id, s: p.period[0], e: p.period[1]}));
 const periodsOn = k => periods.filter(r => r.s <= k && k <= r.e);
@@ -986,11 +1059,17 @@ function ideaScore(it, ctx) {
 const IDEA_MAX = 8; // 일상 추천 탭에 한 번에 보여주는 주제 수
 function pickIdeas(k, avoid = [], n = IDEA_MAX) {
   const ctx = ideaCtx(k), picks = [], skip = [...avoid];
+  const off = Math.random() < 0.5 ? 0 : 1;   // 새로 추가된(아직 안 연) 기획을 한 칸 걸러 섞어 넣음 — 기존 기획과 번갈아 보이게
   while (picks.length < n) {
     let got = 0;
     for (const g of GOAL_ORDER) {
       if (picks.length >= n) break;
-      const it = pickOne(g, ctx, skip);
+      let it = null;
+      if (NEW && (picks.length + off) % 2 === 0) {   // 새 기획 차례: 이 분류부터 돌며 새 기획을 하나만 고름
+        const gi = GOAL_ORDER.indexOf(g);
+        for (const x of [...GOAL_ORDER.slice(gi), ...GOAL_ORDER.slice(0, gi)]) if ((it = pickOne(x, ctx, skip, true))) break;
+      }
+      it ||= pickOne(g, ctx, skip);
       if (it) { picks.push(it); skip.push(it.t); got++; }
     }
     if (!got) break;
@@ -998,9 +1077,12 @@ function pickIdeas(k, avoid = [], n = IDEA_MAX) {
   store.set(IDEA_SEEN_KEY, JSON.stringify([...ideaSeen].slice(-600)));
   return {ctx, picks};
 }
-function pickOne(g, ctx, avoid) {
+function pickOne(g, ctx, avoid, preferNew) {
   {
     let pool = IDEA_POOL.filter(it => it.g === g && !avoid.includes(it.t)).map(it => ({it, r: ideaScore(it, ctx)})).filter(x => x.r[0] > 0);
+    const nw = preferNew ? pool.filter(x => NEW.isNew(NEW.k.idea(x.it))) : [];
+    if (nw.length) { const hit = nw[Math.floor(Math.random() * nw.length)]; ideaSeen.add(hit.it.t); return {...hit.it, whyText: hit.it.why, why: hit.r[1]}; }
+    if (preferNew) return null;   // 이 분류엔 새 기획이 없음 → 다음 분류에서 찾음
     let fresh = pool.filter(x => !ideaSeen.has(x.it.t));
     if (!fresh.length) { // 이 목표의 주제를 다 봤으면 본 기록을 비우고 처음부터
       pool.forEach(x => ideaSeen.delete(x.it.t));
@@ -1072,6 +1154,7 @@ function renderIdeas() {
   $("#idea-scroll").innerHTML = `<div class="agenda">${ideasHTML()}</div>`;
 }
 function openIdea(it) {
+  NEW?.see(NEW.k.idea(it));
   const ref = it.ref && IDEAS.refs[it.ref];
   const goal = IDEAS.goals[it.g] || "";
   const hooks = it.hooks || [];
@@ -1666,11 +1749,13 @@ function slotBody(p, s) {
   return h || `<div class="empty">상세 내용이 없어요.</div>`;
 }
 function openSlot(p, s) {
+  NEW?.see(NEW.k.slot(p.id, s));
   const meta = `<span class="pill" style="--c:${p.color}">${esc(pname(p.id))}</span><span class="pill ghost">${esc(s.label)}${s.date ? " · " + md(s.date) + " " + DOW[parse(s.date).getDay()] : ""}</span><span class="pill line">${FMT[fmtOf(s.format)]}</span>`;
   openSheet(meta, s.title || `${s.format}${s.items.length > 1 ? ` · 컷 ${s.items.length}개` : ""}`, slotBody(p, s));
 }
 function openEntry(e) {
   if (!e) return;
+  NEW?.see(NEW.entryKey(e));
   if (e.src === "slot") return openSlot(P[e.pid], e.slot);
   if (e.src === "month") {
     const m = DATA.months.find(x => x.id === e.mid);
@@ -1698,6 +1783,7 @@ function makePager(tabsEl, pagerEl, items, tabHTML, pageHTML, storeKey) {
     const t = tabsEl.children[i];
     if (t) tabsEl.scrollTo({left: t.offsetLeft - 16, behavior: "smooth"});
     store.set(storeKey, i);
+    if (storeKey === "prodIdx" && NEW && !$("#v-prod").hidden && DATA.products[i]) NEW.see(NEW.k.prod(DATA.products[i]), true);
   };
   const go = (i, smooth = true) => { pagerEl.scrollTo({left: i * pagerEl.clientWidth, behavior: smooth ? "smooth" : "auto"}); mark(i); };
   tabsEl.addEventListener("click", e => { const t = e.target.closest(".tab"); if (t) go(+t.dataset.i); });
@@ -1861,6 +1947,7 @@ document.querySelector(".nav").style.gridTemplateColumns = `repeat(${document.qu
 const monthPager = makePager($("#month-tabs"), $("#month-pager"), DATA.months, m => esc(m.name), monthPage, "monthIdx");
 $("#month-pager").addEventListener("click", ev => {
   const b = ev.target.closest(".entry[data-m]"); if (!b) return;
+  NEW?.see(NEW.monthKey(b.dataset.m));
   const [mi, a, c] = b.dataset.m.split(":");
   const m = DATA.months[+mi];
   if (m.kind === "grid") {
@@ -1988,10 +2075,11 @@ function showView(id) {
   document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== id);
   document.querySelectorAll(".nav button").forEach(b => b.dataset.view === id ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   store.set("view", id);
+  NEW?.ack(id);
   if (id === "v-prod") prodPager.go(prodPager.idx, false);
   if (id === "v-info") renderInfo();
   if (id === "v-month") monthPager.go(monthPager.idx, false);
-  if (id === "v-op") renderOpinion();
+  if (id === "v-op") { renderOpinion(); NEW?.see(NEW.k.op(), true); }
   if (id === "v-idea") renderIdeas();
 }
 /* ---------------- 휴대폰 뒤로가기: 앱이 꺼지지 않게 ----------------
